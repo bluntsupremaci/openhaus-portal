@@ -1,0 +1,46 @@
+<!-- templates/accounts/register_device.html -->
+{% extends "base.html" %} {% load static %} {% block title %}Register Device -
+OpenHaus{% endblock %} {% block content %}
+<div class="row justify-content-center">
+	<div class="col-md-8 col-lg-6">
+		<div class="card">
+			<div class="card-header">
+				<h5>Register New Device</h5>
+			</div>
+			<div class="card-body">
+				<form method="post">
+					{% csrf_token %}
+					<div class="mb-3">
+						<label class="form-label">MAC Address</label>
+						<input
+							type="text"
+							name="mac_address"
+							class="form-control"
+							placeholder="XX:XX:XX:XX:XX:XX"
+							required
+						/>
+						<small class="text-muted">Example: 00:1A:2B:3C:4D:5E</small>
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Hostname (optional)</label>
+						<input type="text" name="hostname" class="form-control" />
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Platform (optional)</label>
+						<input
+							type="text"
+							name="platform"
+							class="form-control"
+							placeholder="Android, iOS, Windows..."
+						/>
+					</div>
+					<button type="submit" class="btn btn-primary">Register Device</button>
+					<a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary"
+						>Cancel</a
+					>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

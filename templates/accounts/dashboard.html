@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - OpenHaus{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="display-6 fw-bold">
+                Welcome back, {{ user.first_name|default:user.email|cut:"@bazeuniversity.edu.ng"|cut:"@" }} 👋
+            </h2>
+            <p class="text-muted">Here's your network access overview</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Quota Card -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow border-0">
+                <div class="card-body text-center p-5">
+                    <h5 class="text-primary mb-3">📊 Available Quota</h5>
+                    {% if quota_status and quota_status.available_gb > 0 %}
+                        <h1 class="display-4 fw-bold text-success">{{ quota_status.available_gb }} GB</h1>
+                        <p class="text-muted">Remaining this month</p>
+                    {% else %}
+                        <h1 class="display-4 fw-bold text-danger">0 GB</h1>
+                        <p class="text-danger">No quota available</p>
+                        <a href="#" class="btn btn-outline-primary mt-3">Buy More Data</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Membership -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow border-0">
+                <div class="card-body p-5">
+                    <h5 class="text-warning mb-3">⭐ Membership Status</h5>
+                    {% if membership_summary and membership_summary.has_membership %}
+                        <h4 class="fw-bold">{{ membership_summary.plan.name }}</h4>
+                        <p class="text-success">Active • Expires in {{ membership_summary.remaining_days }} days</p>
+                    {% else %}
+                        <p class="text-muted">No active membership</p>
+                        <a href="#" class="btn btn-outline-primary btn-sm">Choose a Plan</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Session -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow border-0">
+                <div class="card-body p-5">
+                    <h5 class="text-info mb-3">🔗 Current Session</h5>
+                    {% if active_session %}
+                        <p class="text-success fw-bold">Connected</p>
+                        <small>Started {{ active_session.started_at|timesince }} ago</small>
+                    {% else %}
+                        <p class="text-muted">No active session</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Devices -->
+        <div class="col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Your Devices ({{ devices|length }})</h5>
+                    <a href="{% url 'accounts:register_device' %}" class="btn btn-primary btn-sm">
+                        + Register New Device
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if devices %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>MAC Address</th>
+                                    <th>Hostname</th>
+                                    <th>Last Seen</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in devices %}
+                                <tr>
+                                    <td><code>{{ device.mac_address }}</code></td>
+                                    <td>{{ device.hostname|default:"—" }}</td>
+                                    <td>{{ device.last_seen|timesince }} ago</td>
+                                    <td>
+                                        {% if device.is_trusted %}
+                                            <span class="badge bg-success">Trusted</span>
+                                        {% elif device.is_blocked %}
+                                            <span class="badge bg-danger">Blocked</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Allowed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-5">You haven't registered any devices yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

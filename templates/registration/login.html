@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Login - OpenHaus{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-lg border-0">
+            <div class="card-header text-center bg-primary text-white py-4">
+                <h3 class="mb-1">Welcome Back</h3>
+                <p class="mb-0">Sign in to access the campus network</p>
+            </div>
+            
+            <div class="card-body p-4">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" id="loginForm">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email Address</label>
+                        <input type="email" 
+                               name="username" 
+                               id="emailInput"
+                               class="form-control form-control-lg" 
+                               placeholder="student@bazeuniversity.edu.ng"
+                               required 
+                               autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Password</label>
+                        <input type="password" 
+                               name="password" 
+                               id="passwordInput"
+                               class="form-control form-control-lg" 
+                               placeholder="Enter your password"
+                               required>
+                    </div>
+
+                    <!-- Forgot Password Link -->
+                    <div class="text-end mb-3">
+                        <a href="{% url 'accounts:password_reset' %}" class="text-muted small">
+                            Forgot your password?
+                        </a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="text-center mb-4">
+                    <small class="text-muted">
+                        Don't have an account? 
+                        <a href="{% url 'accounts:signup' %}" class="text-primary fw-semibold">Create one here</a>
+                    </small>
+                </div>
+
+                <div class="border-top pt-4">
+                    <a href="{% url 'accounts:guest_access' %}" 
+                       class="btn btn-outline-info btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-play-circle-fill"></i>
+                        Guest Access - Watch Ad for 30 mins free
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Force clear fields on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+    });
+</script>
+{% endblock %}

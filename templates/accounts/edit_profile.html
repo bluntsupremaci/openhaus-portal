@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - OpenHaus{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header text-center bg-primary text-white">
+                <h4>Edit Profile</h4>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">First Name</label>
+                        <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+                        <small class="text-muted">Changing email will require verification</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number</label>
+                        <input type="tel" name="phone_number" class="form-control" value="{{ user.phone_number }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">University ID</label>
+                        <input type="text" class="form-control" value="{{ user.university_id }}" readonly>
+                        <small class="text-muted">Contact support to change University ID</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

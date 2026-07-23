@@ -13,7 +13,6 @@ from accounts.models import CustomUser
 from devices.models import Device
 
 from openhaus_portal.core import logger
-from openhaus_portal.core.constants import LogEvent
 from openhaus_portal.core.exceptions import (
     DeviceAlreadyRegisteredError,
     DeviceBlockedError,

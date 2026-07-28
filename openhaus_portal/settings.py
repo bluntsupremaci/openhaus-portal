@@ -1,32 +1,27 @@
 import os
 from pathlib import Path
-from django.utils.translation import gettext_lazy as _
 
-# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production")
+# Ensure log directory exists before FileHandler opens
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# SECURITY WARNING: don't run with debug turned on in production!
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ['*']
+# Prefer explicit hosts via env in non-debug
+_allowed = os.getenv("DJANGO_ALLOWED_HOSTS", "*")
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
 
-# Application definition
 INSTALLED_APPS = [
-    # Django Apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
-    # Third-party Apps
-    "phonenumber_field",  # Phone number support
-
-    # Openhaus Apps
+    "phonenumber_field",
     "accounts",
     "portal",
     "devices",
@@ -35,10 +30,6 @@ INSTALLED_APPS = [
     "portal_sessions",
     "api",
     "openhaus_portal",
-
-    # Future apps
-    # "analytics",
-    # "payments",
 ]
 
 MIDDLEWARE = [
@@ -52,124 +43,126 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "openhaus_portal.urls"
-
 WSGI_APPLICATION = "openhaus_portal.wsgi.application"
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1',
-    'http://localhost',
-    'http://127.0.0.1:8000',
+    origin.strip()
+    for origin in os.getenv(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "http://127.0.0.1,http://localhost,http://127.0.0.1:8000",
+    ).split(",")
+    if origin.strip()
 ]
 
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            BASE_DIR / 'templates',   # Make sure this line exists
-        ],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
-# Future: PostgreSQL
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME'),
-#         ...
-#     }
-# }
 
 AUTH_USER_MODEL = "accounts.CustomUser"
 
-# Internationalization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
 
-# Static files
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-#MEDIA_URL = "/media/"          # Future
-#MEDIA_ROOT = BASE_DIR / "media"  # Future
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/accounts/dashboard/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
-# Authentication
-LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/accounts/dashboard/'
-LOGOUT_REDIRECT_URL = '/accounts/login/'
-
-# Phone numbers
 PHONENUMBER_DEFAULT_REGION = "NG"
 PHONENUMBER_DB_FORMAT = "INTERNATIONAL"
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email (Future)
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# ...
-
-# Security (Production recommendations)
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # etc.
 
-# CORS (for future React frontend)
-INSTALLED_APPS += ['corsheaders']
-MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')
+# Optional CORS (only if package installed)
+try:
+    import corsheaders  # noqa: F401
 
-CORS_ALLOW_ALL_ORIGINS = True  # For dev only. Restrict in production.
+    INSTALLED_APPS += ["corsheaders"]
+    MIDDLEWARE.insert(1, "corsheaders.middleware.CorsMiddleware")
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
+except ImportError:
+    pass
 
-# Logging
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {'class': 'logging.StreamHandler'},
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/openhaus.log',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         },
     },
-    'loggers': {
-        'django': {'handlers': ['console', 'file'], 'level': 'INFO'},
-        'api': {'handlers': ['console', 'file'], 'level': 'DEBUG', 'propagate': True},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": str(LOG_DIR / "openhaus.log"),
+            "formatter": "standard",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+        },
+        "api": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "openhaus": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
     },
 }
 
-# FAS Configuration
-FAS_BASE_URL = 'http://127.0.0.1:8000'  # Update for production
+# FAS / captive portal
+FAS_BASE_URL = os.getenv("FAS_BASE_URL", "http://127.0.0.1:8000")
+FAS_PORTAL_LOGIN_URL = "/accounts/login/"
+FAS_GUEST_URL = "/accounts/guest/"
 
-# ==================== GUEST REWARD CONFIG ====================
+# Dev-only: auto-verify email on signup when True
+AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True" or DEBUG
+
+# Guest defaults (GuestConfig model remains source of truth when present)
 GUEST_AD_ENABLED = True
-GUEST_AD_REWARD_MB = 500                    # MB per successful ad watch
-GUEST_AD_DAILY_LIMIT = 3                    # Max ads per day per MAC/IP
-GUEST_AD_EXPIRY_HOURS = 24                  # How long reward lasts
-GUEST_AD_REQUIRED_WATCH_SECONDS = 30        # Minimum ad watch time
-
+GUEST_AD_REWARD_MB = 500
+GUEST_AD_DAILY_LIMIT = 3
+GUEST_AD_EXPIRY_HOURS = 24
+GUEST_AD_REQUIRED_WATCH_SECONDS = 30

@@ -11,7 +11,7 @@ from datetime import timedelta
 from typing import Any
 
 from django.db import models, transaction
-from django.db.models import QuerySet, Count
+from django.db.models import Count, QuerySet
 from django.utils import timezone
 
 from accounts.models import CustomUser
@@ -20,7 +20,6 @@ from memberships.models import (
     MembershipStatus,
     UserMembership,
 )
-
 from openhaus_portal.core import logger
 from openhaus_portal.core.exceptions import (
     ActiveMembershipExistsError,

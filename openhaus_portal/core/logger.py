@@ -2,8 +2,7 @@
 OpenHaus logging utilities.
 
 Provides structured, consistent logging for all major events.
-
-Services should call these helpers instead of raw `logger.*` calls.
+Services should call these helpers instead of raw logger.* calls.
 """
 
 from __future__ import annotations
@@ -14,15 +13,9 @@ from typing import Any
 from accounts.models import CustomUser
 from devices.models import Device
 from memberships.models import UserMembership
-
 from openhaus_portal.core.constants import LogEvent
 
 logger = logging.getLogger("openhaus")
-
-
-# ---------------------------------------------------------------------
-# Core Logger
-# ---------------------------------------------------------------------
 
 
 def log_event(
@@ -54,7 +47,6 @@ def log_event(
 
 
 def log_login(user: CustomUser, ip_address: str) -> None:
-    """Successful user login."""
     log_event(
         LogEvent.AUTH_LOGIN,
         "User authenticated successfully.",
@@ -64,7 +56,6 @@ def log_login(user: CustomUser, ip_address: str) -> None:
 
 
 def log_logout(user: CustomUser) -> None:
-    """User logout."""
     log_event(
         LogEvent.AUTH_LOGOUT,
         "User logged out.",
@@ -73,7 +64,6 @@ def log_logout(user: CustomUser) -> None:
 
 
 def log_authentication_failure(email: str, reason: str) -> None:
-    """Failed login attempt."""
     log_event(
         LogEvent.AUTH_FAILED,
         "Authentication failed.",
@@ -89,7 +79,6 @@ def log_authentication_failure(email: str, reason: str) -> None:
 
 
 def log_device_registered(device: Device) -> None:
-    """New device registration."""
     log_event(
         LogEvent.DEVICE_REGISTERED,
         "Device registered.",
@@ -99,7 +88,6 @@ def log_device_registered(device: Device) -> None:
 
 
 def log_device_blocked(device: Device) -> None:
-    """Device blocked by admin."""
     log_event(
         LogEvent.DEVICE_BLOCKED,
         "Device blocked.",
@@ -110,7 +98,6 @@ def log_device_blocked(device: Device) -> None:
 
 
 def log_device_unblocked(device: Device) -> None:
-    """Device unblocked."""
     log_event(
         LogEvent.DEVICE_UNBLOCKED,
         "Device unblocked.",
@@ -125,7 +112,6 @@ def log_device_unblocked(device: Device) -> None:
 
 
 def log_membership_created(membership: UserMembership) -> None:
-    """New membership created."""
     log_event(
         LogEvent.MEMBERSHIP_CREATED,
         "Membership created.",
@@ -134,8 +120,16 @@ def log_membership_created(membership: UserMembership) -> None:
     )
 
 
+def log_membership_activated(membership: UserMembership) -> None:
+    log_event(
+        LogEvent.MEMBERSHIP_ACTIVATED,
+        "Membership activated.",
+        user=membership.user.email,
+        plan=membership.plan.name,
+    )
+
+
 def log_membership_renewed(membership: UserMembership) -> None:
-    """Membership renewed."""
     log_event(
         LogEvent.MEMBERSHIP_RENEWED,
         "Membership renewed.",
@@ -145,10 +139,28 @@ def log_membership_renewed(membership: UserMembership) -> None:
 
 
 def log_membership_expired(membership: UserMembership) -> None:
-    """Membership expired."""
     log_event(
         LogEvent.MEMBERSHIP_EXPIRED,
         "Membership expired.",
+        user=membership.user.email,
+        plan=membership.plan.name,
+    )
+
+
+def log_membership_cancelled(membership: UserMembership) -> None:
+    log_event(
+        LogEvent.MEMBERSHIP_CANCELLED,
+        "Membership cancelled.",
+        user=membership.user.email,
+        plan=membership.plan.name,
+    )
+
+
+def log_membership_suspended(membership: UserMembership) -> None:
+    log_event(
+        LogEvent.MEMBERSHIP_SUSPENDED,
+        "Membership suspended.",
+        level=logging.WARNING,
         user=membership.user.email,
         plan=membership.plan.name,
     )
@@ -160,7 +172,6 @@ def log_membership_expired(membership: UserMembership) -> None:
 
 
 def log_quota_granted(user: CustomUser, amount_mb: int) -> None:
-    """Quota allocation granted."""
     log_event(
         LogEvent.QUOTA_GRANTED,
         "Quota granted.",
@@ -170,7 +181,6 @@ def log_quota_granted(user: CustomUser, amount_mb: int) -> None:
 
 
 def log_quota_consumed(user: CustomUser, amount_mb: int) -> None:
-    """Quota consumption recorded."""
     log_event(
         LogEvent.QUOTA_CONSUMED,
         "Quota consumed.",
@@ -185,7 +195,6 @@ def log_quota_consumed(user: CustomUser, amount_mb: int) -> None:
 
 
 def log_session_started(user: CustomUser, device: Device) -> None:
-    """WiFi session started."""
     log_event(
         LogEvent.SESSION_STARTED,
         "Network session started.",
@@ -195,7 +204,6 @@ def log_session_started(user: CustomUser, device: Device) -> None:
 
 
 def log_session_ended(user: CustomUser, device: Device) -> None:
-    """WiFi session ended."""
     log_event(
         LogEvent.SESSION_ENDED,
         "Network session ended.",
@@ -205,7 +213,6 @@ def log_session_ended(user: CustomUser, device: Device) -> None:
 
 
 def log_fas_allow(user: CustomUser, device: Device) -> None:
-    """Captive portal authorization granted."""
     log_event(
         LogEvent.FAS_ALLOW,
         "Network access granted via FAS.",
@@ -215,7 +222,6 @@ def log_fas_allow(user: CustomUser, device: Device) -> None:
 
 
 def log_fas_deny(reason: str, mac_address: str) -> None:
-    """Captive portal authorization denied."""
     log_event(
         LogEvent.FAS_DENY,
         "Network access denied.",
@@ -231,7 +237,6 @@ def log_fas_deny(reason: str, mac_address: str) -> None:
 
 
 def log_exception(event: str, message: str, **context: Any) -> None:
-    """Log unexpected exceptions with full traceback."""
     log_event(
         event,
         message,

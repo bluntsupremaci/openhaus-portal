@@ -7,7 +7,7 @@ validation, expiration, and reporting.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.db import models, transaction
@@ -15,36 +15,33 @@ from django.db.models import QuerySet, Sum
 from django.utils import timezone
 
 from accounts.models import CustomUser
-from quotas.models import QuotaAllocation, QuotaType, QuotaUsage
-
 from openhaus_portal.core import logger
 from openhaus_portal.core.exceptions import (
     InsufficientQuotaError,
     QuotaExpiredError,
     QuotaNotFoundError,
 )
+from quotas.models import QuotaAllocation, QuotaType, QuotaUsage
 
 
 class QuotaService:
     """Service class for all quota-related business logic."""
 
-    # ============================================================================
-    # Query Methods
-    # ============================================================================
-
     @staticmethod
     def get_active_allocations(user: CustomUser) -> QuerySet[QuotaAllocation]:
-        """Return active, non-expired allocations (priority: soonest expiry)."""
-        return QuotaAllocation.objects.select_related("user").filter(
-            user=user,
-            is_active=True,
-            expires_at__gt=timezone.now(),
-            used_bytes__lt=models.F("total_bytes"),
-        ).order_by("expires_at", "granted_at", "created_at")
+        return (
+            QuotaAllocation.objects.select_related("user")
+            .filter(
+                user=user,
+                is_active=True,
+                expires_at__gt=timezone.now(),
+                used_bytes__lt=models.F("total_bytes"),
+            )
+            .order_by("expires_at", "granted_at", "created_at")
+        )
 
     @staticmethod
     def get_available_quota(user: CustomUser) -> int:
-        """Total remaining bytes across all active allocations."""
         result = QuotaService.get_active_allocations(user).aggregate(
             total=Sum(models.F("total_bytes") - models.F("used_bytes"))
         )
@@ -52,20 +49,14 @@ class QuotaService:
 
     @staticmethod
     def has_available_quota(user: CustomUser) -> bool:
-        """Quick check for any usable quota."""
         return QuotaService.get_available_quota(user) > 0
 
     @staticmethod
     def get_primary_allocation(user: CustomUser) -> QuotaAllocation:
-        """Allocation that will be consumed first (earliest expiry)."""
         allocation = QuotaService.get_active_allocations(user).first()
         if allocation is None:
             raise QuotaNotFoundError("No active quota allocation exists.")
         return allocation
-
-    # ============================================================================
-    # Consumption (Critical Feature)
-    # ============================================================================
 
     @staticmethod
     def consume_quota(
@@ -73,17 +64,14 @@ class QuotaService:
         bytes_to_consume: int,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """
-        Consume quota from the soonest-expiring allocation(s).
-
-        Creates immutable QuotaUsage records.
-        """
         if bytes_to_consume <= 0:
             return
 
         with transaction.atomic():
             remaining = bytes_to_consume
-            allocations = list(QuotaService.get_active_allocations(user))
+            allocations = list(
+                QuotaService.get_active_allocations(user).select_for_update()
+            )
 
             for allocation in allocations:
                 if remaining <= 0:
@@ -100,7 +88,6 @@ class QuotaService:
                     bytes_used=to_consume,
                     metadata=metadata or {},
                 )
-
                 remaining -= to_consume
 
             if remaining > 0:
@@ -110,20 +97,16 @@ class QuotaService:
 
             logger.log_quota_consumed(
                 user=user,
-                amount_mb=bytes_to_consume // (1024 * 1024),
+                amount_mb=max(1, bytes_to_consume // (1024 * 1024))
+                if bytes_to_consume >= 1024 * 1024
+                else 0,
             )
-
-    # ============================================================================
-    # Dashboard / Status Methods
-    # ============================================================================
 
     @staticmethod
     def get_quota_status(user: CustomUser) -> dict[str, Any]:
-        """Comprehensive quota status for dashboards and templates."""
         try:
             summary = QuotaService.get_quota_summary(user)
             primary = QuotaService.get_primary_allocation(user)
-
             return {
                 "available_bytes": summary["available_bytes"],
                 "available_gb": round(summary["available_bytes"] / (1024**3), 2),
@@ -151,9 +134,7 @@ class QuotaService:
 
     @staticmethod
     def get_quota_summary(user: CustomUser) -> dict[str, Any]:
-        """Complete quota summary for API, dashboard, captive portal."""
         allocations = list(QuotaService.get_active_allocations(user))
-
         return {
             "available_bytes": QuotaService.get_available_quota(user),
             "allocation_count": len(allocations),
@@ -171,13 +152,8 @@ class QuotaService:
             ],
         }
 
-    # ============================================================================
-    # Validation
-    # ============================================================================
-
     @staticmethod
     def ensure_available_quota(user: CustomUser, required_bytes: int = 1) -> None:
-        """Enforce sufficient quota before network access or usage."""
         if required_bytes <= 0:
             raise ValueError("required_bytes must be greater than zero.")
 
@@ -186,34 +162,27 @@ class QuotaService:
                 raise QuotaExpiredError("All quota allocations have expired.")
             raise QuotaNotFoundError("No quota allocation exists.")
 
-        if QuotaService.get_available_quota(user) < required_bytes:
+        available = QuotaService.get_available_quota(user)
+        if available < required_bytes:
             raise InsufficientQuotaError(
-                f"Requested {required_bytes:,} bytes but only "
-                f"{QuotaService.get_available_quota(user):,} bytes remain."
+                f"Requested {required_bytes:,} bytes but only {available:,} bytes remain."
             )
 
-    # ============================================================================
-    # Reporting & History
-    # ============================================================================
+    # Backwards-compatible alias used by older callers
+    ensure_available = ensure_available_quota
 
     @staticmethod
     def get_usage_history(user: CustomUser) -> QuerySet[QuotaUsage]:
-        """Usage history for user dashboard / admin reports."""
-        return QuotaUsage.objects.select_related("allocation__user").filter(
-            allocation__user=user
-        ).order_by("-recorded_at")
+        return (
+            QuotaUsage.objects.select_related("allocation__user")
+            .filter(allocation__user=user)
+            .order_by("-recorded_at")
+        )
 
     @staticmethod
     def get_total_consumed(user: CustomUser) -> int:
-        """Total bytes ever consumed by user."""
-        result = QuotaService.get_usage_history(user).aggregate(
-            total=Sum("bytes_used")
-        )
+        result = QuotaService.get_usage_history(user).aggregate(total=Sum("bytes_used"))
         return result["total"] or 0
-
-    # ============================================================================
-    # Allocation Creation (Internal Factory)
-    # ============================================================================
 
     @staticmethod
     def _create_allocation(
@@ -224,7 +193,6 @@ class QuotaService:
         expires_at: datetime,
         notes: str = "",
     ) -> QuotaAllocation:
-        """Internal factory for all quota grants."""
         if total_bytes <= 0:
             raise ValueError("total_bytes must be greater than zero.")
         if expires_at <= timezone.now():
@@ -240,18 +208,17 @@ class QuotaService:
                 expires_at=expires_at,
                 notes=notes,
             )
-
-            logger.log_quota_granted(user=user, amount_mb=total_bytes // (1024 * 1024))
+            logger.log_quota_granted(
+                user=user, amount_mb=total_bytes // (1024 * 1024)
+            )
             return allocation
 
     @staticmethod
     def grant_daily_free_quota(
         *, user: CustomUser, total_bytes: int, expires_at: datetime
     ) -> QuotaAllocation:
-        """Grant daily free allowance or guest reward."""
         if total_bytes <= 0:
             raise ValueError("total_bytes must be greater than zero.")
-
         return QuotaService._create_allocation(
             user=user,
             quota_type=QuotaType.FREE_DAILY,
@@ -264,7 +231,6 @@ class QuotaService:
     def grant_membership_quota(
         *, user: CustomUser, total_bytes: int, expires_at: datetime
     ) -> QuotaAllocation:
-        """Grant quota from membership plan."""
         return QuotaService._create_allocation(
             user=user,
             quota_type=QuotaType.MEMBERSHIP,
@@ -272,20 +238,26 @@ class QuotaService:
             expires_at=expires_at,
             notes="Membership allocation",
         )
-    
-    @staticmethod
-    def grant_welcome_gift(user: CustomUser, total_bytes: int = 5 * 1024 * 1024 * 1024):
-        """Grant one-time welcome data gift to non-students."""
-        if user.one_time_quota_granted:
-            return
 
-        QuotaService.grant_daily_free_quota(
+    @staticmethod
+    def grant_welcome_gift(
+        user: CustomUser, total_bytes: int = 500 * 1024 * 1024
+    ) -> QuotaAllocation | None:
+        """One-time welcome data gift. Default 500MB for 30 days."""
+        if user.one_time_quota_granted:
+            return None
+
+        allocation = QuotaService.grant_daily_free_quota(
             user=user,
             total_bytes=total_bytes,
-            expires_at=timezone.now() + timezone.timedelta(days=30)
+            expires_at=timezone.now() + timedelta(days=30),
         )
-
         user.one_time_quota_granted = True
-        user.save(update_fields=['one_time_quota_granted'])
-
-        logger.log_event("WELCOME_GIFT_GRANTED", "Welcome 500MB gift granted", user=user, extra={"gb": total_bytes / (1024**3)})
+        user.save(update_fields=["one_time_quota_granted"])
+        logger.log_event(
+            "WELCOME_GIFT_GRANTED",
+            "Welcome gift granted",
+            user=user.email,
+            bytes=total_bytes,
+        )
+        return allocation

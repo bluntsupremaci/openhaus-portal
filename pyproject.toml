@@ -1,0 +1,119 @@
+[project]
+name = "openhaus-portal"
+version = "0.1.0"
+description = "OpenHaus campus network access management portal"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+  ".venv",
+  "venv",
+  "**/migrations/**",
+  "staticfiles",
+  "logs",
+  "db.sqlite3",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = [
+  "E501",
+  "RUF012",  # Django Meta / migration list class attrs
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*" = ["ALL"]
+"**/admin.py" = ["RUF012"]
+"**/models.py" = ["RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "accounts",
+  "api",
+  "devices",
+  "memberships",
+  "quotas",
+  "portal_sessions",
+  "portal",
+  "openhaus_portal",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = '''
+/(
+  migrations
+  | staticfiles
+  | logs
+  | \.venv
+  | venv
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = ["*/migrations/*", ".venv/*", "venv/*"]
+known_first_party = [
+  "accounts",
+  "api",
+  "devices",
+  "memberships",
+  "quotas",
+  "portal_sessions",
+  "portal",
+  "openhaus_portal",
+]
+
+[tool.pyright]
+include = [
+  "accounts",
+  "api",
+  "devices",
+  "memberships",
+  "quotas",
+  "portal_sessions",
+  "portal",
+  "openhaus_portal",
+]
+exclude = [
+  "**/migrations",
+  "**/__pycache__",
+  "venv",
+  ".venv",
+  "staticfiles",
+  "logs",
+]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+reportMissingImports = true
+# Django stubs are incomplete for AUTH_USER_MODEL / request.user / Meta
+reportIncompatibleMethodOverride = "none"
+reportIncompatibleVariableOverride = "none"
+reportArgumentType = "none"
+reportAssignmentType = "none"
+reportAttributeAccessIssue = "none"
+reportCallIssue = "none"
+reportReturnType = "none"
+reportFunctionMemberAccess = "none"
+reportOptionalOperand = "none"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "openhaus_portal.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "-q --tb=short"
+testpaths = [
+  "accounts",
+  "api",
+  "devices",
+  "memberships",
+  "quotas",
+  "portal_sessions",
+]

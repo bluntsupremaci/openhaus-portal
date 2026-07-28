@@ -4,87 +4,113 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0011_guestconfig_membershipconfig_quotaconfig_and_more'),
+        ("accounts", "0011_guestconfig_membershipconfig_quotaconfig_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='guestconfig',
-            options={'verbose_name': 'Guest Access Configuration', 'verbose_name_plural': 'Guest Access Configurations'},
+            name="guestconfig",
+            options={
+                "verbose_name": "Guest Access Configuration",
+                "verbose_name_plural": "Guest Access Configurations",
+            },
         ),
         migrations.AlterModelOptions(
-            name='membershipconfig',
-            options={'verbose_name': 'Membership Configuration', 'verbose_name_plural': 'Membership Configurations'},
+            name="membershipconfig",
+            options={
+                "verbose_name": "Membership Configuration",
+                "verbose_name_plural": "Membership Configurations",
+            },
         ),
         migrations.AlterModelOptions(
-            name='quotaconfig',
-            options={'verbose_name': 'Data Quota Configuration', 'verbose_name_plural': 'Data Quota Configurations'},
+            name="quotaconfig",
+            options={
+                "verbose_name": "Data Quota Configuration",
+                "verbose_name_plural": "Data Quota Configurations",
+            },
         ),
         migrations.AddField(
-            model_name='guestconfig',
-            name='mode',
-            field=models.CharField(choices=[('data_quota', 'Data Quota Based'), ('time_based', 'Time Based'), ('hybrid', 'Hybrid')], default='data_quota', max_length=20),
+            model_name="guestconfig",
+            name="mode",
+            field=models.CharField(
+                choices=[
+                    ("data_quota", "Data Quota Based"),
+                    ("time_based", "Time Based"),
+                    ("hybrid", "Hybrid"),
+                ],
+                default="data_quota",
+                max_length=20,
+            ),
         ),
         migrations.AddField(
-            model_name='guestconfig',
-            name='name',
-            field=models.CharField(default='Default Guest Settings', max_length=100),
+            model_name="guestconfig",
+            name="name",
+            field=models.CharField(default="Default Guest Settings", max_length=100),
         ),
         migrations.AddField(
-            model_name='guestconfig',
-            name='reward_minutes',
+            model_name="guestconfig",
+            name="reward_minutes",
             field=models.PositiveIntegerField(default=30),
         ),
         migrations.AddField(
-            model_name='membershipconfig',
-            name='name',
-            field=models.CharField(default='Default Membership Settings', max_length=100),
+            model_name="membershipconfig",
+            name="name",
+            field=models.CharField(
+                default="Default Membership Settings", max_length=100
+            ),
         ),
         migrations.AddField(
-            model_name='quotaconfig',
-            name='mode',
-            field=models.CharField(choices=[('data_quota', 'Data Quota Based'), ('time_based', 'Time Based'), ('hybrid', 'Hybrid')], default='data_quota', max_length=20),
+            model_name="quotaconfig",
+            name="mode",
+            field=models.CharField(
+                choices=[
+                    ("data_quota", "Data Quota Based"),
+                    ("time_based", "Time Based"),
+                    ("hybrid", "Hybrid"),
+                ],
+                default="data_quota",
+                max_length=20,
+            ),
         ),
         migrations.AddField(
-            model_name='quotaconfig',
-            name='name',
-            field=models.CharField(default='Default Quota Settings', max_length=100),
+            model_name="quotaconfig",
+            name="name",
+            field=models.CharField(default="Default Quota Settings", max_length=100),
         ),
         migrations.AlterField(
-            model_name='guestconfig',
-            name='ad_enabled',
+            model_name="guestconfig",
+            name="ad_enabled",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='guestconfig',
-            name='daily_limit',
+            model_name="guestconfig",
+            name="daily_limit",
             field=models.PositiveIntegerField(default=3),
         ),
         migrations.AlterField(
-            model_name='guestconfig',
-            name='expiry_hours',
+            model_name="guestconfig",
+            name="expiry_hours",
             field=models.PositiveIntegerField(default=24),
         ),
         migrations.AlterField(
-            model_name='guestconfig',
-            name='reward_mb',
+            model_name="guestconfig",
+            name="reward_mb",
             field=models.PositiveIntegerField(default=500),
         ),
         migrations.AlterField(
-            model_name='quotaconfig',
-            name='default_daily_gb',
+            model_name="quotaconfig",
+            name="default_daily_gb",
             field=models.PositiveIntegerField(default=2),
         ),
         migrations.AlterField(
-            model_name='quotaconfig',
-            name='non_student_gb',
+            model_name="quotaconfig",
+            name="non_student_gb",
             field=models.PositiveIntegerField(default=5),
         ),
         migrations.AlterField(
-            model_name='quotaconfig',
-            name='speed_limit_mbps',
+            model_name="quotaconfig",
+            name="speed_limit_mbps",
             field=models.PositiveIntegerField(default=0),
         ),
     ]

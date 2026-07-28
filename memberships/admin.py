@@ -1,11 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import (
-    MembershipPlan,
-    MembershipStatus,
-    UserMembership,
-)
+from .models import MembershipPlan, MembershipStatus, UserMembership
 
 
 @admin.register(MembershipPlan)
@@ -83,11 +79,7 @@ class MembershipPlanAdmin(admin.ModelAdmin):
         ),
         (
             "Status",
-            {
-                "fields": (
-                    "is_active",
-                )
-            },
+            {"fields": ("is_active",)},
         ),
         (
             "Audit",
@@ -127,9 +119,7 @@ class UserMembershipAdmin(admin.ModelAdmin):
         "plan__name",
     )
 
-    ordering = (
-        "-end_date",
-    )
+    ordering = ("-end_date",)
 
     readonly_fields = (
         "id",
@@ -141,13 +131,9 @@ class UserMembershipAdmin(admin.ModelAdmin):
         "is_valid",
     )
 
-    raw_id_fields = (
-        "user",
-    )
+    raw_id_fields = ("user",)
 
-    autocomplete_fields = (
-        "plan",
-    )
+    autocomplete_fields = ("plan",)
 
     list_select_related = (
         "user",
@@ -218,10 +204,7 @@ class UserMembershipAdmin(admin.ModelAdmin):
 
     def is_valid(self, obj):
         """Display validity state."""
-        return (
-            obj.status == MembershipStatus.ACTIVE
-            and obj.end_date > timezone.now()
-        )
+        return obj.status == MembershipStatus.ACTIVE and obj.end_date > timezone.now()
 
     is_valid.boolean = True
     is_valid.short_description = "Valid"

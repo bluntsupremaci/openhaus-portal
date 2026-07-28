@@ -1,59 +1,36 @@
-"""
-Guest Reward Service for OpenHaus.
-Uses the structured GuestConfig model and links MAC → Device for FAS.
-"""
+"""Guest / ad rewards → AccessPolicy time grants + device link."""
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from django.db import transaction
-from django.utils import timezone
 
-from accounts.models import CustomUser, GuestAdWatch, GuestConfig
+from access_policy.services import AccessPolicyService
+from accounts.models import CustomUser, GuestAdWatch
 from devices.services.devices import DeviceService
 from openhaus_portal.core import logger
 from openhaus_portal.core.exceptions import DeviceAlreadyRegisteredError
-from quotas.services.quotas import QuotaService
 
 
 class GuestRewardService:
-    """Guest ad reward service using structured config."""
-
-    @staticmethod
-    def get_config() -> GuestConfig:
-        config, _ = GuestConfig.objects.get_or_create()
-        return config
-
     @staticmethod
     def can_watch_ad(mac_address: str) -> bool:
-        config = GuestRewardService.get_config()
-        if not config.ad_enabled:
+        policy = AccessPolicyService.settings()
+        if not policy.ad_reward_enabled:
             return False
-
         mac = DeviceService.normalize_mac(mac_address)
+        from django.utils import timezone
+
         today = timezone.now().date()
-        count_today = GuestAdWatch.objects.filter(
-            mac_address=mac,
-            watched_at__date=today,
-        ).count()
-        return count_today < config.daily_limit
+        count = GuestAdWatch.objects.filter(mac_address=mac, watched_at__date=today).count()
+        return count < policy.ad_daily_limit
 
     @staticmethod
     def grant_ad_reward(mac_address: str) -> int | None:
-        """Grant reward after ad watch; ensure Device exists for FAS MAC lookup."""
-        config = GuestRewardService.get_config()
-        if not config.ad_enabled:
-            return None
-
         mac = DeviceService.normalize_mac(mac_address)
         if not mac or mac == "UNKNOWN":
             return None
-
         if not GuestRewardService.can_watch_ad(mac):
             return None
-
-        reward_bytes = config.reward_mb * 1024 * 1024
 
         try:
             with transaction.atomic():
@@ -61,7 +38,6 @@ class GuestRewardService:
                     f"guest.{mac.replace(':', '').replace('-', '')[:12].lower()}"
                     f"@temp.openhaus.local"
                 )
-
                 user, created = CustomUser.objects.get_or_create(
                     email=guest_email,
                     defaults={
@@ -82,26 +58,21 @@ class GuestRewardService:
                         platform="captive-portal",
                     )
                 except DeviceAlreadyRegisteredError:
-                    # MAC already owned — still grant quota to that owner if same flow fails
-                    device = DeviceService.get_device(mac)
-                    user = device.user
+                    user = DeviceService.get_device(mac).user
 
-                QuotaService.grant_daily_free_quota(
-                    user=user,
-                    total_bytes=reward_bytes,
-                    expires_at=timezone.now() + timedelta(hours=config.expiry_hours),
-                )
+                grant = AccessPolicyService.grant_ad_reward(user)
+                if grant is None:
+                    return None
 
                 GuestAdWatch.objects.create(mac_address=mac)
-
                 logger.log_event(
                     "GUEST_AD_REWARD_GRANTED",
-                    f"Granted {config.reward_mb}MB to guest",
+                    "Ad reward granted",
                     user=user.email,
                     mac=mac,
+                    seconds=grant.duration_seconds,
                 )
-                return reward_bytes
-
+                return grant.duration_seconds
         except Exception as e:
             logger.log_exception("GUEST_REWARD_ERROR", str(e), mac=mac)
             return None

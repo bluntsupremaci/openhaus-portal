@@ -4,22 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0006_systemconfig'),
+        ("accounts", "0006_systemconfig"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GuestAdWatch',
+            name="GuestAdWatch",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('mac_address', models.CharField(db_index=True, max_length=17)),
-                ('watched_at', models.DateTimeField(auto_now_add=True)),
-                ('reward_granted', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("mac_address", models.CharField(db_index=True, max_length=17)),
+                ("watched_at", models.DateTimeField(auto_now_add=True)),
+                ("reward_granted", models.BooleanField(default=True)),
             ],
             options={
-                'ordering': ['-watched_at'],
+                "ordering": ["-watched_at"],
             },
         ),
     ]

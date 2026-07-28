@@ -29,11 +29,7 @@ class DeviceService:
     @staticmethod
     def get_device(mac_address: str) -> Device:
         mac = DeviceService.normalize_mac(mac_address)
-        device = (
-            Device.objects.select_related("user")
-            .filter(mac_address__iexact=mac)
-            .first()
-        )
+        device = Device.objects.select_related("user").filter(mac_address__iexact=mac).first()
         if device is None:
             raise DeviceNotFoundError(f"Device '{mac}' was not found.")
         return device
@@ -88,11 +84,7 @@ class DeviceService:
         Raises DeviceAlreadyRegisteredError if MAC belongs to another user.
         """
         mac = DeviceService.normalize_mac(mac_address)
-        existing = (
-            Device.objects.select_related("user")
-            .filter(mac_address__iexact=mac)
-            .first()
-        )
+        existing = Device.objects.select_related("user").filter(mac_address__iexact=mac).first()
         if existing is not None:
             if existing.user_id != owner.pk:
                 raise DeviceAlreadyRegisteredError(

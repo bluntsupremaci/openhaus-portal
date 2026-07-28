@@ -6,55 +6,57 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('memberships', '0001_initial'),
+        ("memberships", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='membershipplan',
-            name='description',
+            model_name="membershipplan",
+            name="description",
             field=models.TextField(blank=True),
         ),
         migrations.AlterField(
-            model_name='membershipplan',
-            name='duration_days',
+            model_name="membershipplan",
+            name="duration_days",
             field=models.PositiveIntegerField(),
         ),
         migrations.AlterField(
-            model_name='membershipplan',
-            name='is_active',
+            model_name="membershipplan",
+            name="is_active",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='membershipplan',
-            name='name',
+            model_name="membershipplan",
+            name="name",
             field=models.CharField(max_length=100, unique=True),
         ),
         migrations.AlterField(
-            model_name='membershipplan',
-            name='price',
+            model_name="membershipplan",
+            name="price",
             field=models.DecimalField(decimal_places=2, max_digits=10),
         ),
         migrations.AlterField(
-            model_name='usermembership',
-            name='end_date',
+            model_name="usermembership",
+            name="end_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='usermembership',
-            name='is_active',
+            model_name="usermembership",
+            name="is_active",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='usermembership',
-            name='start_date',
+            model_name="usermembership",
+            name="start_date",
             field=models.DateTimeField(default=django.utils.timezone.now),
         ),
         migrations.AddIndex(
-            model_name='usermembership',
-            index=models.Index(fields=['user', 'is_active', 'end_date'], name='memberships_user_id_d4eb32_idx'),
+            model_name="usermembership",
+            index=models.Index(
+                fields=["user", "is_active", "end_date"],
+                name="memberships_user_id_d4eb32_idx",
+            ),
         ),
     ]

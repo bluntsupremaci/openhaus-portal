@@ -4,14 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0008_alter_systemconfig_options_systemconfig_category_and_more'),
+        ("accounts", "0008_alter_systemconfig_options_systemconfig_category_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='guestadwatch',
-            options={'ordering': ['-watched_at'], 'verbose_name': 'Guest Ad Watch', 'verbose_name_plural': 'Guest Ad Watches'},
+            name="guestadwatch",
+            options={
+                "ordering": ["-watched_at"],
+                "verbose_name": "Guest Ad Watch",
+                "verbose_name_plural": "Guest Ad Watches",
+            },
         ),
     ]

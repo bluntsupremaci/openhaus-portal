@@ -76,7 +76,14 @@ class WiFiSession(models.Model):
             if self.ended_at and self.started_at:
                 self.duration_seconds = int((self.ended_at - self.started_at).total_seconds())
             self.is_active = False
-            self.save(update_fields=["ended_at", "duration_seconds", "is_active", "updated_at"])
+            self.save(
+                update_fields=[
+                    "ended_at",
+                    "duration_seconds",
+                    "is_active",
+                    "updated_at",
+                ]
+            )
 
     @property
     def is_ongoing(self) -> bool:

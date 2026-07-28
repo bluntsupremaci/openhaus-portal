@@ -4,49 +4,45 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0009_alter_guestadwatch_options'),
+        ("accounts", "0009_alter_guestadwatch_options"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GuestSettings',
-            fields=[
-            ],
+            name="GuestSettings",
+            fields=[],
             options={
-                'verbose_name': 'Guest Access Setting',
-                'verbose_name_plural': 'Guest Access Settings',
-                'proxy': True,
-                'indexes': [],
-                'constraints': [],
+                "verbose_name": "Guest Access Setting",
+                "verbose_name_plural": "Guest Access Settings",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
-            bases=('accounts.systemconfig',),
+            bases=("accounts.systemconfig",),
         ),
         migrations.CreateModel(
-            name='MembershipSettings',
-            fields=[
-            ],
+            name="MembershipSettings",
+            fields=[],
             options={
-                'verbose_name': 'Membership Setting',
-                'verbose_name_plural': 'Membership Settings',
-                'proxy': True,
-                'indexes': [],
-                'constraints': [],
+                "verbose_name": "Membership Setting",
+                "verbose_name_plural": "Membership Settings",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
-            bases=('accounts.systemconfig',),
+            bases=("accounts.systemconfig",),
         ),
         migrations.CreateModel(
-            name='QuotaSettings',
-            fields=[
-            ],
+            name="QuotaSettings",
+            fields=[],
             options={
-                'verbose_name': 'Quota Setting',
-                'verbose_name_plural': 'Quota Settings',
-                'proxy': True,
-                'indexes': [],
-                'constraints': [],
+                "verbose_name": "Quota Setting",
+                "verbose_name_plural": "Quota Settings",
+                "proxy": True,
+                "indexes": [],
+                "constraints": [],
             },
-            bases=('accounts.systemconfig',),
+            bases=("accounts.systemconfig",),
         ),
     ]

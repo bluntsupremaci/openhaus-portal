@@ -5,49 +5,54 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('devices', '0003_device_is_blocked_device_updated_at_and_more'),
-        ('portal_sessions', '0001_initial'),
+        ("devices", "0003_device_is_blocked_device_updated_at_and_more"),
+        ("portal_sessions", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='wifisession',
-            options={'ordering': ['-started_at'], 'verbose_name': 'WiFi Session', 'verbose_name_plural': 'WiFi Sessions'},
+            name="wifisession",
+            options={
+                "ordering": ["-started_at"],
+                "verbose_name": "WiFi Session",
+                "verbose_name_plural": "WiFi Sessions",
+            },
         ),
         migrations.RenameField(
-            model_name='wifisession',
-            old_name='end_time',
-            new_name='ended_at',
+            model_name="wifisession",
+            old_name="end_time",
+            new_name="ended_at",
         ),
         migrations.RenameField(
-            model_name='wifisession',
-            old_name='start_time',
-            new_name='started_at',
+            model_name="wifisession",
+            old_name="start_time",
+            new_name="started_at",
         ),
         migrations.RemoveField(
-            model_name='wifisession',
-            name='data_used_mb',
+            model_name="wifisession",
+            name="data_used_mb",
         ),
         migrations.AddField(
-            model_name='wifisession',
-            name='bytes_used',
-            field=models.BigIntegerField(default=0, verbose_name='bytes used'),
+            model_name="wifisession",
+            name="bytes_used",
+            field=models.BigIntegerField(default=0, verbose_name="bytes used"),
         ),
         migrations.AddField(
-            model_name='wifisession',
-            name='updated_at',
+            model_name="wifisession",
+            name="updated_at",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AlterField(
-            model_name='wifisession',
-            name='mac_address',
+            model_name="wifisession",
+            name="mac_address",
             field=models.CharField(blank=True, db_index=True, max_length=17),
         ),
         migrations.AddIndex(
-            model_name='wifisession',
-            index=models.Index(fields=['device', 'is_active'], name='portal_sess_device__d20695_idx'),
+            model_name="wifisession",
+            index=models.Index(
+                fields=["device", "is_active"], name="portal_sess_device__d20695_idx"
+            ),
         ),
     ]

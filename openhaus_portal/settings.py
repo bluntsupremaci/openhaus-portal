@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "portal_sessions",
     "api",
     "openhaus_portal",
+    "access_policy",
 ]
 
 MIDDLEWARE = [
@@ -159,10 +160,3 @@ FAS_GUEST_URL = "/accounts/guest/"
 
 # Dev-only: auto-verify email on signup when True
 AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True" or DEBUG
-
-# Guest defaults (GuestConfig model remains source of truth when present)
-GUEST_AD_ENABLED = True
-GUEST_AD_REWARD_MB = 500
-GUEST_AD_DAILY_LIMIT = 3
-GUEST_AD_EXPIRY_HOURS = 24
-GUEST_AD_REQUIRED_WATCH_SECONDS = 30

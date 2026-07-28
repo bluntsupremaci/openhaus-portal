@@ -14,12 +14,9 @@ from django.db import models, transaction
 from django.db.models import Count, QuerySet
 from django.utils import timezone
 
+from access_policy.models import AccessPolicySettings
 from accounts.models import CustomUser
-from memberships.models import (
-    MembershipPlan,
-    MembershipStatus,
-    UserMembership,
-)
+from memberships.models import MembershipPlan, MembershipStatus, UserMembership
 from openhaus_portal.core import logger
 from openhaus_portal.core.exceptions import (
     ActiveMembershipExistsError,
@@ -153,9 +150,7 @@ class MembershipService:
             membership.end_date = now + timedelta(days=membership.plan.duration_days)
             membership.status = MembershipStatus.ACTIVE
 
-            membership.save(
-                update_fields=["status", "start_date", "end_date", "updated_at"]
-            )
+            membership.save(update_fields=["status", "start_date", "end_date", "updated_at"])
 
             MembershipService._assign_membership_quota(membership)
             logger.log_membership_activated(membership=membership)
@@ -197,19 +192,24 @@ class MembershipService:
                 .get(pk=membership.pk)
             )
 
-            if membership.status in (MembershipStatus.CANCELLED, MembershipStatus.SUSPENDED):
+            if membership.status in (
+                MembershipStatus.CANCELLED,
+                MembershipStatus.SUSPENDED,
+            ):
                 raise ValueError("This membership cannot be renewed.")
 
             now = timezone.now()
-            start_date = now if membership.end_date and membership.end_date < now else membership.end_date or now
+            start_date = (
+                now
+                if membership.end_date and membership.end_date < now
+                else membership.end_date or now
+            )
 
             membership.end_date = start_date + timedelta(days=membership.plan.duration_days)
             membership.start_date = start_date
             membership.status = MembershipStatus.ACTIVE
 
-            membership.save(
-                update_fields=["status", "start_date", "end_date", "updated_at"]
-            )
+            membership.save(update_fields=["status", "start_date", "end_date", "updated_at"])
 
             MembershipService._assign_membership_quota(membership)
             logger.log_membership_renewed(membership=membership)
@@ -268,10 +268,8 @@ class MembershipService:
         try:
             membership = MembershipService.get_active_membership(user)
         except MembershipNotFoundError:
-            if UserMembership.objects.filter(
-                user=user, status=MembershipStatus.EXPIRED
-            ).exists():
-                raise MembershipExpiredError("Membership has expired.")
+            if UserMembership.objects.filter(user=user, status=MembershipStatus.EXPIRED).exists():
+                raise MembershipExpiredError("Membership has expired.") from None
             raise
 
         if membership.has_expired:
@@ -372,24 +370,25 @@ class MembershipService:
     @staticmethod
     def get_available_plans() -> QuerySet[MembershipPlan]:
         """Active plans available for selection."""
-        return MembershipPlan.objects.filter(is_active=True).order_by(
-            "duration_days", "price"
-        )
-    
-    @staticmethod
-    def grant_premium_trial(user, months: int = 1):
-        """Grant 1-month premium trial to new verified students."""
-        from datetime import timedelta
+        return MembershipPlan.objects.filter(is_active=True).order_by("duration_days", "price")
 
-        # Create a new membership using existing method
-        try:
-            plan = MembershipPlan.objects.get(name__icontains="Premium")
-        except MembershipPlan.DoesNotExist:
-            # Fallback - create a basic premium plan if none exists
+    @staticmethod
+    def grant_premium_trial(user, months: int = 1, days: int | None = None):
+        """One-time student/staff trial membership. Length from days or months*30."""
+
+        policy = AccessPolicySettings.get_solo()
+        duration_days = days if days is not None else max(1, months * 30)
+        slug = policy.verify_student_trial_plan_slug
+
+        plan = MembershipPlan.objects.filter(slug=slug).first()
+        if plan is None:
+            plan = MembershipPlan.objects.filter(name__icontains="trial").first()
+        if plan is None:
             plan = MembershipPlan.objects.create(
                 name="Premium Trial",
-                duration_days=30 * months,
-                included_quota_gb=0,
+                slug=slug,
+                duration_days=duration_days,
+                included_quota_gb=50,
                 price=0,
                 is_active=True,
                 max_devices=5,
@@ -398,9 +397,16 @@ class MembershipService:
         membership = MembershipService.create_membership(
             user=user,
             plan=plan,
-            start_date=timezone.now()
+            start_date=timezone.now(),
         )
-
-        MembershipService.activate_membership(membership)  
-
-        logger.log_event("PREMIUM_TRIAL_GRANTED", user=user, extra={"months": months})
+        # If create_membership does not set end_date from duration_days, set explicitly:
+        membership.end_date = timezone.now() + timedelta(days=duration_days)
+        membership.save(update_fields=["end_date"])
+        MembershipService.activate_membership(membership)
+        logger.log_event(
+            "PREMIUM_TRIAL_GRANTED",
+            "Premium trial membership granted",
+            user=user.email,
+            days=duration_days,
+        )
+        return membership

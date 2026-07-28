@@ -4,62 +4,120 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0010_guestsettings_membershipsettings_quotasettings'),
+        ("accounts", "0010_guestsettings_membershipsettings_quotasettings"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GuestConfig',
+            name="GuestConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ad_enabled', models.BooleanField(default=True, help_text='Enable guest ad reward system')),
-                ('reward_mb', models.PositiveIntegerField(default=500, help_text='MB given per ad watch')),
-                ('daily_limit', models.PositiveIntegerField(default=3, help_text='Max watches per day per device')),
-                ('expiry_hours', models.PositiveIntegerField(default=24, help_text='How long reward lasts')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "ad_enabled",
+                    models.BooleanField(
+                        default=True, help_text="Enable guest ad reward system"
+                    ),
+                ),
+                (
+                    "reward_mb",
+                    models.PositiveIntegerField(
+                        default=500, help_text="MB given per ad watch"
+                    ),
+                ),
+                (
+                    "daily_limit",
+                    models.PositiveIntegerField(
+                        default=3, help_text="Max watches per day per device"
+                    ),
+                ),
+                (
+                    "expiry_hours",
+                    models.PositiveIntegerField(
+                        default=24, help_text="How long reward lasts"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Guest Access Config',
-                'verbose_name_plural': 'Guest Access Config',
+                "verbose_name": "Guest Access Config",
+                "verbose_name_plural": "Guest Access Config",
             },
         ),
         migrations.CreateModel(
-            name='MembershipConfig',
+            name="MembershipConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('basic_daily_gb', models.PositiveIntegerField(default=2)),
-                ('premium_unlimited', models.BooleanField(default=True)),
-                ('grace_period_days', models.PositiveIntegerField(default=1)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("basic_daily_gb", models.PositiveIntegerField(default=2)),
+                ("premium_unlimited", models.BooleanField(default=True)),
+                ("grace_period_days", models.PositiveIntegerField(default=1)),
             ],
             options={
-                'verbose_name': 'Membership Config',
-                'verbose_name_plural': 'Membership Config',
+                "verbose_name": "Membership Config",
+                "verbose_name_plural": "Membership Config",
             },
         ),
         migrations.CreateModel(
-            name='QuotaConfig',
+            name="QuotaConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('default_daily_gb', models.PositiveIntegerField(default=2, help_text='Default daily free quota for students')),
-                ('non_student_gb', models.PositiveIntegerField(default=5, help_text='One-time gift for non-students')),
-                ('speed_limit_mbps', models.PositiveIntegerField(default=0, help_text='0 = Unlimited speed')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "default_daily_gb",
+                    models.PositiveIntegerField(
+                        default=2, help_text="Default daily free quota for students"
+                    ),
+                ),
+                (
+                    "non_student_gb",
+                    models.PositiveIntegerField(
+                        default=5, help_text="One-time gift for non-students"
+                    ),
+                ),
+                (
+                    "speed_limit_mbps",
+                    models.PositiveIntegerField(
+                        default=0, help_text="0 = Unlimited speed"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Quota Config',
-                'verbose_name_plural': 'Quota Config',
+                "verbose_name": "Quota Config",
+                "verbose_name_plural": "Quota Config",
             },
         ),
         migrations.DeleteModel(
-            name='SystemConfig',
+            name="SystemConfig",
         ),
         migrations.DeleteModel(
-            name='GuestSettings',
+            name="GuestSettings",
         ),
         migrations.DeleteModel(
-            name='MembershipSettings',
+            name="MembershipSettings",
         ),
         migrations.DeleteModel(
-            name='QuotaSettings',
+            name="QuotaSettings",
         ),
     ]

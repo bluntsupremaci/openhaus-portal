@@ -113,7 +113,12 @@ class SessionService:
                 )
             session.is_active = False
             session.save(
-                update_fields=["ended_at", "duration_seconds", "is_active", "updated_at"]
+                update_fields=[
+                    "ended_at",
+                    "duration_seconds",
+                    "is_active",
+                    "updated_at",
+                ]
             )
 
             logger.log_session_ended(user=session.user, device=session.device)

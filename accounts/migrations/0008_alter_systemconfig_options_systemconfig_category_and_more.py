@@ -4,29 +4,42 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0007_guestadwatch'),
+        ("accounts", "0007_guestadwatch"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='systemconfig',
-            options={'ordering': ['category', 'key'], 'verbose_name': 'System Setting', 'verbose_name_plural': 'System Settings'},
+            name="systemconfig",
+            options={
+                "ordering": ["category", "key"],
+                "verbose_name": "System Setting",
+                "verbose_name_plural": "System Settings",
+            },
         ),
         migrations.AddField(
-            model_name='systemconfig',
-            name='category',
-            field=models.CharField(choices=[('general', 'General Settings'), ('guest', 'Guest Access'), ('membership', 'Membership Plans'), ('quota', 'Quota & Data'), ('security', 'Security')], default='general', max_length=20),
+            model_name="systemconfig",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("general", "General Settings"),
+                    ("guest", "Guest Access"),
+                    ("membership", "Membership Plans"),
+                    ("quota", "Quota & Data"),
+                    ("security", "Security"),
+                ],
+                default="general",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='systemconfig',
-            name='description',
-            field=models.TextField(blank=True, help_text='Help text shown in admin'),
+            model_name="systemconfig",
+            name="description",
+            field=models.TextField(blank=True, help_text="Help text shown in admin"),
         ),
         migrations.AlterField(
-            model_name='systemconfig',
-            name='key',
+            model_name="systemconfig",
+            name="key",
             field=models.CharField(max_length=100, unique=True),
         ),
     ]

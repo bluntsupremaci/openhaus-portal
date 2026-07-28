@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from accounts.models import CustomUser
+
 # from devices.models import Device  # Uncomment when Device model is ready
 
 
@@ -52,13 +53,8 @@ class QuotaAllocation(models.Model):
         default=QuotaType.MEMBERSHIP,
     )
 
-    total_bytes = models.BigIntegerField(
-        help_text="Total allocated quota in bytes."
-    )
-    used_bytes = models.BigIntegerField(
-        default=0,
-        help_text="Bytes already consumed."
-    )
+    total_bytes = models.BigIntegerField(help_text="Total allocated quota in bytes.")
+    used_bytes = models.BigIntegerField(default=0, help_text="Bytes already consumed.")
 
     granted_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField()
@@ -150,8 +146,8 @@ class QuotaUsage(models.Model):
         if self.bytes_used <= 0:
             raise ValidationError("Bytes used must be greater than zero.")
 
-    def save(self, *args, **kwargs) -> None:
-        if self.pk:
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            from django.core.exceptions import ValidationError
             raise ValidationError("Quota usage records are immutable.")
-        self.full_clean()
         super().save(*args, **kwargs)

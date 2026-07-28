@@ -6,24 +6,37 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('devices', '0001_initial'),
+        ("devices", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='device',
-            name='devices_dev_user_id_624f27_idx',
+            model_name="device",
+            name="devices_dev_user_id_624f27_idx",
         ),
         migrations.AlterField(
-            model_name='device',
-            name='mac_address',
-            field=models.CharField(db_index=True, help_text='Unique hardware address. Format: XX:XX:XX:XX:XX:XX', max_length=17, unique=True, validators=[django.core.validators.RegexValidator(message='Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF)', regex='^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$')], verbose_name='MAC Address'),
+            model_name="device",
+            name="mac_address",
+            field=models.CharField(
+                db_index=True,
+                help_text="Unique hardware address. Format: XX:XX:XX:XX:XX:XX",
+                max_length=17,
+                unique=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF)",
+                        regex="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
+                    )
+                ],
+                verbose_name="MAC Address",
+            ),
         ),
         migrations.AddIndex(
-            model_name='device',
-            index=models.Index(fields=['user', 'last_seen'], name='devices_dev_user_id_bc12bf_idx'),
+            model_name="device",
+            index=models.Index(
+                fields=["user", "last_seen"], name="devices_dev_user_id_bc12bf_idx"
+            ),
         ),
     ]

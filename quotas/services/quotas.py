@@ -69,9 +69,7 @@ class QuotaService:
 
         with transaction.atomic():
             remaining = bytes_to_consume
-            allocations = list(
-                QuotaService.get_active_allocations(user).select_for_update()
-            )
+            allocations = list(QuotaService.get_active_allocations(user).select_for_update())
 
             for allocation in allocations:
                 if remaining <= 0:
@@ -97,9 +95,11 @@ class QuotaService:
 
             logger.log_quota_consumed(
                 user=user,
-                amount_mb=max(1, bytes_to_consume // (1024 * 1024))
-                if bytes_to_consume >= 1024 * 1024
-                else 0,
+                amount_mb=(
+                    max(1, bytes_to_consume // (1024 * 1024))
+                    if bytes_to_consume >= 1024 * 1024
+                    else 0
+                ),
             )
 
     @staticmethod
@@ -208,9 +208,7 @@ class QuotaService:
                 expires_at=expires_at,
                 notes=notes,
             )
-            logger.log_quota_granted(
-                user=user, amount_mb=total_bytes // (1024 * 1024)
-            )
+            logger.log_quota_granted(user=user, amount_mb=total_bytes // (1024 * 1024))
             return allocation
 
     @staticmethod

@@ -5,7 +5,6 @@ Thin user-facing views (dashboard, device registration, profile, signup, etc.).
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest
 from django.shortcuts import redirect, render
@@ -16,7 +15,6 @@ from accounts.services.authentication import AuthService
 from accounts.services.guest import GuestRewardService
 from devices.services.devices import DeviceService
 from memberships.services.memberships import MembershipService
-from openhaus_portal.core.exceptions import OpenHausError
 from portal_sessions.services.sessions import SessionService
 from quotas.services.quotas import QuotaService
 
@@ -84,9 +82,7 @@ def signup_view(request: HttpRequest):
             return redirect("accounts:dashboard")
         except Exception as e:
             error_str = str(e).lower()
-            if "email" in error_str and (
-                "already exists" in error_str or "unique" in error_str
-            ):
+            if "email" in error_str and ("already exists" in error_str or "unique" in error_str):
                 messages.error(request, "An account with this email already exists.")
             else:
                 messages.error(request, str(e))
@@ -105,9 +101,7 @@ def dashboard(request: HttpRequest):
         "active_devices_count": DeviceService.get_active_devices(user).count(),
         "active_session": SessionService.get_active_session(user=user),
     }
-    context["has_active_membership"] = bool(
-        context["membership_summary"].get("has_membership")
-    )
+    context["has_active_membership"] = bool(context["membership_summary"].get("has_membership"))
     return render(request, "accounts/dashboard.html", context)
 
 
@@ -125,9 +119,7 @@ def register_device(request: HttpRequest):
                 hostname=hostname,
                 platform=platform,
             )
-            messages.success(
-                request, f"Device '{device.mac_address}' registered successfully."
-            )
+            messages.success(request, f"Device '{device.mac_address}' registered successfully.")
             return redirect("accounts:dashboard")
         except Exception as e:
             messages.error(request, str(e))
@@ -172,9 +164,7 @@ def guest_access(request: HttpRequest):
                     f"Success! You received {config.reward_mb}MB of free data.",
                 )
             else:
-                messages.warning(
-                    request, "Daily limit reached or reward failed. Try again later."
-                )
+                messages.warning(request, "Daily limit reached or reward failed. Try again later.")
         except Exception as e:
             messages.error(request, f"Failed to process reward: {e}")
 
@@ -204,9 +194,7 @@ def edit_profile(request: HttpRequest):
             user.save()
             messages.success(request, "Profile updated successfully.")
             if new_email and new_email != old_email:
-                messages.info(
-                    request, "Your new email needs verification. Check your inbox."
-                )
+                messages.info(request, "Your new email needs verification. Check your inbox.")
             return redirect("accounts:profile")
         except Exception as e:
             messages.error(request, str(e))
@@ -217,9 +205,7 @@ def edit_profile(request: HttpRequest):
 @login_required
 def resend_verification(request: HttpRequest):
     if AuthService.resend_verification_email(request.user):
-        messages.success(
-            request, "Verification email has been resent. Please check your inbox."
-        )
+        messages.success(request, "Verification email has been resent. Please check your inbox.")
     else:
         messages.info(request, "Your email is already verified.")
     return redirect("accounts:profile")

@@ -20,8 +20,8 @@ from accounts.services.authorization import AuthorizationService
 # Re-exports from app services
 from devices.services.devices import DeviceService
 from memberships.services.memberships import MembershipService
-from quotas.services.quotas import QuotaService
 from portal_sessions.services.sessions import SessionService
+from quotas.services.quotas import QuotaService
 
 __all__ = [
     "AuthService",

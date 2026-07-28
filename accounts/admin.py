@@ -1,80 +1,101 @@
-"""
-Admin interface for OpenHaus accounts and system configuration.
-"""
+"""Admin for accounts app."""
 
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import CustomUser, GuestConfig, QuotaConfig, MembershipConfig
+from accounts.models import CustomUser, GuestAdWatch
 
 
-# ====================== CUSTOM USER ADMIN ======================
 @admin.register(CustomUser)
-class CustomUserAdmin(UserAdmin):
-    model = CustomUser
-
+class CustomUserAdmin(BaseUserAdmin):
+    ordering = ("email",)
     list_display = (
         "email",
-        "full_name",
         "user_type",
-        "university_id",
         "is_email_verified",
         "is_active",
         "is_staff",
-        "date_joined",
+        "signup_temp_access_granted",
+        "signup_bonus_granted",
+        "premium_trial_activated",
     )
-
-    list_filter = ("user_type", "is_email_verified", "is_active", "is_staff")
-    search_fields = ("email", "university_id", "first_name", "last_name")
-    readonly_fields = ("date_joined", "last_login", "updated_at")
+    list_filter = (
+        "user_type",
+        "is_email_verified",
+        "is_active",
+        "is_staff",
+        "signup_bonus_granted",
+    )
+    search_fields = ("email", "first_name", "last_name", "university_id")
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name", "phone_number")}),
-        (_("University info"), {"fields": ("user_type", "university_id")}),
-        (_("Verification & Bonuses"), {
-            "fields": ("is_email_verified", "email_verified_at", "signup_bonus_granted", "premium_trial_activated")
-        }),
-        (_("Permissions"), {
-            "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
-        }),
-        (_("Important dates"), {"fields": ("last_login", "date_joined", "updated_at")}),
+        (
+            "Profile",
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                    "phone_number",
+                    "user_type",
+                    "university_id",
+                )
+            },
+        ),
+        (
+            "Verification & access flags",
+            {
+                "fields": (
+                    "is_email_verified",
+                    "email_verified_at",
+                    "signup_temp_access_granted",
+                    "signup_temp_pending",
+                    "signup_bonus_granted",
+                    "premium_trial_activated",
+                    "premium_trial_end_date",
+                    "one_time_quota_granted",
+                )
+            },
+        ),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        ("Dates", {"fields": ("last_login", "date_joined", "updated_at")}),
+    )
+    readonly_fields = ("updated_at", "last_login", "date_joined")
+
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "email",
+                    "password1",
+                    "password2",
+                    "user_type",
+                    "is_staff",
+                    "is_superuser",
+                ),
+            },
+        ),
     )
 
-    def full_name(self, obj):
-        return obj.get_full_name() or obj.email
-    
-
-# ====================== GUEST CONFIG ======================
-@admin.register(GuestConfig)
-class GuestConfigAdmin(admin.ModelAdmin):
-    list_display = ('name', 'mode', 'ad_enabled', 'reward_mb', 'daily_limit')
-    fieldsets = (
-        ("General", {"fields": ("name", "mode")}),
-        ("Ad Reward", {"fields": ("ad_enabled", "reward_mb", "reward_minutes", "daily_limit", "expiry_hours")}),
-    )
-    class Media:
-        js = ('admin/js/guest_config.js',)
+    filter_horizontal = ("groups", "user_permissions")
 
 
-@admin.register(QuotaConfig)
-class QuotaConfigAdmin(admin.ModelAdmin):
-    list_display = ('name', 'mode', 'default_daily_gb', 'non_student_gb')
-    fieldsets = (
-        ("General", {"fields": ("name", "mode")}),
-        ("Data Quota Settings", {"fields": ("default_daily_gb", "non_student_gb", "speed_limit_mbps")}),
-    )
-    class Media:
-        js = ('admin/js/quota_config.js',)
-
-
-@admin.register(MembershipConfig)
-class MembershipConfigAdmin(admin.ModelAdmin):
-    list_display = ('name', 'mode', 'basic_daily_gb', 'premium_unlimited')
-    fieldsets = (
-        ("General", {"fields": ("name", "mode")}),
-        ("Membership Rules", {"fields": ("basic_daily_gb", "premium_unlimited", "grace_period_days")}),
-    )
-    class Media:
-        js = ('admin/js/membership_config.js',)
+@admin.register(GuestAdWatch)
+class GuestAdWatchAdmin(admin.ModelAdmin):
+    list_display = ("mac_address", "watched_at", "reward_granted")
+    list_filter = ("reward_granted",)
+    search_fields = ("mac_address",)
+    readonly_fields = ("watched_at",)

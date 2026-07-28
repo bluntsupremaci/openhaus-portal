@@ -60,10 +60,9 @@ class FASService:
     @staticmethod
     def handle(request: HttpRequest) -> HttpResponse:
         params = FASService.parse_request(request)
-        want_json = (
-            request.GET.get("format") == "json"
-            or request.headers.get("Accept", "").startswith("application/json")
-        )
+        want_json = request.GET.get("format") == "json" or request.headers.get(
+            "Accept", ""
+        ).startswith("application/json")
 
         if not params.client_mac:
             return FASService._deny(
@@ -138,7 +137,14 @@ class FASService:
         flat = {k: v[0] if isinstance(v, list) and v else v for k, v in query.items()}
         new_query = urlencode(flat)
         target = urlunparse(
-            (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment)
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment,
+            )
         )
         return HttpResponseRedirect(target)
 

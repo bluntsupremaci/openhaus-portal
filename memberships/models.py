@@ -56,9 +56,7 @@ class MembershipPlan(models.Model):
     )
     currency = models.CharField(max_length=3, default="NGN")
 
-    duration_days = models.PositiveIntegerField(
-        help_text=_("Duration of the plan in days.")
-    )
+    duration_days = models.PositiveIntegerField(help_text=_("Duration of the plan in days."))
     included_quota_gb = models.PositiveIntegerField(
         default=0,
         help_text=_("Data quota included (GB)."),
@@ -140,10 +138,7 @@ class UserMembership(models.Model):
     @property
     def is_valid(self) -> bool:
         """True if currently active and not expired."""
-        return (
-            self.status == MembershipStatus.ACTIVE
-            and self.end_date > timezone.now()
-        )
+        return self.status == MembershipStatus.ACTIVE and self.end_date > timezone.now()
 
     @property
     def has_expired(self) -> bool:

@@ -16,9 +16,9 @@ class WiFiSessionAdmin(admin.ModelAdmin):
         "device",
         "mac_address",
         "ip_address",
-        "started_at",      # ← updated
-        "ended_at",        # ← updated
-        "bytes_used",      # ← updated
+        "started_at",  # ← updated
+        "ended_at",  # ← updated
+        "bytes_used",  # ← updated
         "is_active",
     )
 

@@ -6,46 +6,56 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('devices', '0002_remove_device_devices_dev_user_id_624f27_idx_and_more'),
-        ('quotas', '0001_initial'),
+        ("devices", "0002_remove_device_devices_dev_user_id_624f27_idx_and_more"),
+        ("quotas", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='quota',
-            name='end_date',
+            model_name="quota",
+            name="end_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='quota',
-            name='is_active',
+            model_name="quota",
+            name="is_active",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='quota',
-            name='quota_type',
-            field=models.CharField(choices=[('data', 'Data (MB)'), ('time', 'Time (Minutes)'), ('session', 'Session Count')], default='data', max_length=20),
+            model_name="quota",
+            name="quota_type",
+            field=models.CharField(
+                choices=[
+                    ("data", "Data (MB)"),
+                    ("time", "Time (Minutes)"),
+                    ("session", "Session Count"),
+                ],
+                default="data",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='quota',
-            name='start_date',
+            model_name="quota",
+            name="start_date",
             field=models.DateTimeField(default=django.utils.timezone.now),
         ),
         migrations.AlterField(
-            model_name='quota',
-            name='total_amount',
+            model_name="quota",
+            name="total_amount",
             field=models.BigIntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='quota',
-            name='used_amount',
+            model_name="quota",
+            name="used_amount",
             field=models.BigIntegerField(default=0),
         ),
         migrations.AddIndex(
-            model_name='quota',
-            index=models.Index(fields=['user', 'is_active', 'end_date'], name='quotas_quot_user_id_e0187d_idx'),
+            model_name="quota",
+            index=models.Index(
+                fields=["user", "is_active", "end_date"],
+                name="quotas_quot_user_id_e0187d_idx",
+            ),
         ),
     ]

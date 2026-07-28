@@ -1,4 +1,5 @@
-from django.shortcuts import render, HttpResponse
+from django.http import HttpResponse
+
 
 def index(request):
     # TODO: Replace with real dashboard logic later

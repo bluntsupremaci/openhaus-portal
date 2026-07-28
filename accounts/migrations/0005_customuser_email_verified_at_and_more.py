@@ -4,30 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0004_alter_customuser_email'),
+        ("accounts", "0004_alter_customuser_email"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='email_verified_at',
+            model_name="customuser",
+            name="email_verified_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='premium_trial_activated',
+            model_name="customuser",
+            name="premium_trial_activated",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='premium_trial_end_date',
+            model_name="customuser",
+            name="premium_trial_end_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='signup_bonus_granted',
+            model_name="customuser",
+            name="signup_bonus_granted",
             field=models.BooleanField(default=False),
         ),
     ]

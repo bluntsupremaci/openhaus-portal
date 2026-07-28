@@ -1,12 +1,6 @@
-"""
-Authentication Service for OpenHaus.
-
-Handles user identification, credential validation, and account management.
-"""
+"""Authentication Service for OpenHaus."""
 
 from __future__ import annotations
-
-from typing import Optional
 
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
@@ -19,24 +13,19 @@ from openhaus_portal.core.exceptions import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
 )
-from quotas.services.quotas import QuotaService
 
 
 class AuthService:
-    """Service class for authentication and account management."""
-
     @staticmethod
     def authenticate_client(*, email: str, password: str) -> CustomUser:
         email = CustomUser.objects.normalize_email(email)
         user = authenticate(username=email, password=password)
-
         if user is None:
             logger.log_authentication_failure(email or "", "invalid_credentials")
             raise InvalidCredentialsError("Invalid email or password.")
-
         AuthService.ensure_active_account(user)
         AuthService.ensure_verified_email(user)
-        return user
+        return user  # type: ignore[return-value]
 
     @staticmethod
     def register_user(
@@ -48,7 +37,6 @@ class AuthService:
         first_name: str = "",
         last_name: str = "",
     ) -> CustomUser:
-        """Create user and grant temporary access (single place for signup rules)."""
         email = CustomUser.objects.normalize_email(email)
         if not email:
             raise ValueError("Email is required.")
@@ -64,31 +52,13 @@ class AuthService:
                 first_name=first_name,
                 last_name=last_name,
             )
-            AuthService.grant_temporary_access(user)
+            from access_policy.services import AccessPolicyService
+
+            AccessPolicyService.grant_signup_temp(user)
             return user
 
     @staticmethod
-    def grant_temporary_access(user: CustomUser) -> None:
-        """Limited access immediately after signup (before email verification)."""
-        if user.one_time_quota_granted:
-            return
-
-        try:
-            with transaction.atomic():
-                QuotaService.grant_welcome_gift(
-                    user=user,
-                    total_bytes=500 * 1024 * 1024,
-                )
-                logger.log_event(
-                    "TEMPORARY_ACCESS_GRANTED",
-                    "Temporary 500MB access granted",
-                    user=user.email,
-                )
-        except Exception as e:
-            logger.log_exception("TEMPORARY_ACCESS_ERROR", str(e), user=user.email)
-
-    @staticmethod
-    def get_user_by_email(email: str) -> Optional[CustomUser]:
+    def get_user_by_email(email: str) -> CustomUser | None:
         email = CustomUser.objects.normalize_email(email)
         return CustomUser.objects.filter(email__iexact=email).first()
 
@@ -101,8 +71,8 @@ class AuthService:
     def logout_user(request: HttpRequest) -> None:
         user = request.user if request.user.is_authenticated else None
         logout(request)
-        if user is not None and hasattr(user, "email"):
-            logger.log_logout(user)
+        if user is not None and getattr(user, "email", None):
+            logger.log_logout(user)  # type: ignore[arg-type]
 
     @staticmethod
     def ensure_active_account(user: CustomUser) -> None:
@@ -123,7 +93,6 @@ class AuthService:
     def resend_verification_email(user: CustomUser) -> bool:
         if user.is_email_verified:
             return False
-        # TODO: wire real email backend
         logger.log_event(
             "VERIFICATION_EMAIL_RESENT",
             "Verification email resent (stub)",

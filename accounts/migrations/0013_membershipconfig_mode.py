@@ -4,15 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0012_alter_guestconfig_options_and_more'),
+        ("accounts", "0012_alter_guestconfig_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='membershipconfig',
-            name='mode',
-            field=models.CharField(choices=[('data_quota', 'Data Quota Based'), ('time_based', 'Time Based'), ('hybrid', 'Hybrid')], default='data_quota', max_length=20),
+            model_name="membershipconfig",
+            name="mode",
+            field=models.CharField(
+                choices=[
+                    ("data_quota", "Data Quota Based"),
+                    ("time_based", "Time Based"),
+                    ("hybrid", "Hybrid"),
+                ],
+                default="data_quota",
+                max_length=20,
+            ),
         ),
     ]

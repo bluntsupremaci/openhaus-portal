@@ -1,5 +1,5 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 from memberships.models import MembershipPlan
 
@@ -44,9 +44,7 @@ class Command(BaseCommand):
         ]
 
         for data in plans:
-            plan, created = MembershipPlan.objects.get_or_create(
-                slug=data["slug"], defaults=data
-            )
+            plan, created = MembershipPlan.objects.get_or_create(slug=data["slug"], defaults=data)
             status = "✅ Created" if created else "Already exists"
             self.stdout.write(self.style.SUCCESS(f"{status}: {plan.name}"))
 
@@ -61,7 +59,9 @@ class Command(BaseCommand):
                 user_type="staff",
                 is_email_verified=True,
             )
-            self.stdout.write(self.style.SUCCESS("✅ Created superuser: admin@bazeuniversity.edu.ng"))
+            self.stdout.write(
+                self.style.SUCCESS("✅ Created superuser: admin@bazeuniversity.edu.ng")
+            )
         else:
             self.stdout.write(self.style.WARNING("Superuser already exists."))
 

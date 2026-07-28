@@ -1,7 +1,8 @@
 """
 Session Service for OpenHaus.
 
-Handles WiFi session lifecycle: creation, usage tracking, termination, quota.
+WiFi session lifecycle. Quota is required only when the user has
+active data allocations (e.g. membership); time-grant-only users skip it.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from quotas.services.quotas import QuotaService
 
 
 class SessionService:
-    """Service class for managing WiFi session lifecycle and quota integration."""
+    """Manage WiFi session lifecycle."""
 
     @staticmethod
     def start_session(
@@ -31,12 +32,14 @@ class SessionService:
         nas_ip: str | None = None,
         **extra: Any,
     ) -> WiFiSession:
-        """Create and start a new WiFi session after successful authorization."""
         with transaction.atomic():
             DeviceService.ensure_device_allowed(device)
-            QuotaService.ensure_available_quota(user, required_bytes=1)
 
-            # End any existing active sessions for this device (one active per device).
+            # Data quota only if user already has allocations (membership path).
+            # Time-grant users (signup / daily / ads) may have no QuotaAllocation.
+            if QuotaService.get_active_allocations(user).exists():
+                QuotaService.ensure_available_quota(user, required_bytes=1)
+
             active = WiFiSession.objects.select_for_update().filter(
                 device=device,
                 is_active=True,
@@ -66,7 +69,6 @@ class SessionService:
                 is_active=True,
                 **extra,
             )
-
             logger.log_session_started(user=user, device=device)
             return session
 
@@ -81,18 +83,18 @@ class SessionService:
 
         with transaction.atomic():
             session = WiFiSession.objects.select_for_update().get(pk=session.pk)
-
             if not session.is_active:
                 raise SessionError("Cannot update usage on an inactive session.")
 
             session.bytes_used += bytes_used
             session.save(update_fields=["bytes_used", "updated_at"])
 
-            QuotaService.consume_quota(
-                user=session.user,
-                bytes_to_consume=bytes_used,
-                metadata=metadata or {},
-            )
+            if QuotaService.get_active_allocations(session.user).exists():
+                QuotaService.consume_quota(
+                    user=session.user,
+                    bytes_to_consume=bytes_used,
+                    metadata=metadata or {},
+                )
             return session
 
     @staticmethod
@@ -102,7 +104,6 @@ class SessionService:
     ) -> WiFiSession:
         with transaction.atomic():
             session = WiFiSession.objects.select_for_update().get(pk=session.pk)
-
             if not session.is_active:
                 return session
 
@@ -113,14 +114,8 @@ class SessionService:
                 )
             session.is_active = False
             session.save(
-                update_fields=[
-                    "ended_at",
-                    "duration_seconds",
-                    "is_active",
-                    "updated_at",
-                ]
+                update_fields=["ended_at", "duration_seconds", "is_active", "updated_at"]
             )
-
             logger.log_session_ended(user=session.user, device=session.device)
             return session
 
@@ -131,12 +126,10 @@ class SessionService:
         ip_address: str | None = None,
     ) -> WiFiSession | None:
         queryset = WiFiSession.objects.filter(is_active=True)
-
         if user:
             queryset = queryset.filter(user=user)
         if device:
             queryset = queryset.filter(device=device)
         if ip_address:
             queryset = queryset.filter(ip_address=ip_address)
-
         return queryset.select_related("user", "device").first()

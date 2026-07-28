@@ -1,8 +1,7 @@
 """
 Forward Authentication Service (FAS) for openNDS.
 
-Parses openNDS query parameters, runs authorization, and builds
-HTTP responses (redirect for production path, JSON for debugging).
+Parses query params, runs authorization, returns JSON (lab) or redirect (authaction).
 """
 
 from __future__ import annotations
@@ -50,7 +49,8 @@ class FASService:
             client_ip=first("clientip", "client_ip", "ip"),
             gateway=first("gatewayname", "gateway", "gatewayaddress", "nas_ip"),
             hostname=first("client_hostname", "hostname"),
-            user_agent=first("user_agent", "useragent") or request.META.get("HTTP_USER_AGENT", ""),
+            user_agent=first("user_agent", "useragent")
+            or request.META.get("HTTP_USER_AGENT", ""),
             token=first("tok", "token", "hid"),
             authaction=first("authaction", "auth_action"),
             redir=first("redir", "originurl", "redirect"),
@@ -60,9 +60,10 @@ class FASService:
     @staticmethod
     def handle(request: HttpRequest) -> HttpResponse:
         params = FASService.parse_request(request)
-        want_json = request.GET.get("format") == "json" or request.headers.get(
-            "Accept", ""
-        ).startswith("application/json")
+        want_json = (
+            request.GET.get("format") == "json"
+            or request.headers.get("Accept", "").startswith("application/json")
+        )
 
         if not params.client_mac:
             return FASService._deny(
@@ -96,20 +97,21 @@ class FASService:
             )
 
         if want_json or not params.authaction:
-            # Debug / lab path when openNDS authaction is not present.
             payload = {
-                "status": result["status"],
-                "action": result["action"],
-                "username": result["username"],
-                "user_type": result["user_type"],
-                "membership": result["membership"],
-                "quota_remaining": result["quota_remaining"],
-                "session_id": result["session_id"],
+                "status": result.get("status", "success"),
+                "action": result.get("action", "allow"),
+                "username": result.get("username"),
+                "user_type": result.get("user_type"),
+                "role": result.get("role"),
+                "membership": result.get("membership"),
+                "quota_remaining": result.get("quota_remaining", 0),
+                "grant_seconds_remaining": result.get("grant_seconds_remaining", 0),
+                "session_id": result.get("session_id"),
             }
             if not params.authaction:
                 payload["warning"] = (
-                    "No authaction in request; returned JSON only. "
-                    "Configure openNDS FAS so the browser is redirected with authaction+tok."
+                    "No authaction in request; JSON only. "
+                    "Configure openNDS FAS with authaction+tok for redirect grant."
                 )
             return JsonResponse(payload)
 
@@ -117,10 +119,6 @@ class FASService:
 
     @staticmethod
     def _allow_redirect(params: FASRequestParams) -> HttpResponse:
-        """
-        Level-0 style completion: send the client browser back to openNDS
-        authaction with the original token so openNDS can grant access.
-        """
         authaction = params.authaction
         assert authaction is not None
 
@@ -128,21 +126,18 @@ class FASService:
         query = parse_qs(parsed.query)
 
         if params.token:
-            # openNDS level 0 uses tok=
             query["tok"] = [params.token]
         if params.redir:
             query["redir"] = [params.redir]
 
-        # Flatten parse_qs lists
         flat = {k: v[0] if isinstance(v, list) and v else v for k, v in query.items()}
-        new_query = urlencode(flat)
         target = urlunparse(
             (
                 parsed.scheme,
                 parsed.netloc,
                 parsed.path,
                 parsed.params,
-                new_query,
+                urlencode(flat),
                 parsed.fragment,
             )
         )
@@ -164,6 +159,13 @@ class FASService:
 
         portal_url = getattr(settings, "FAS_PORTAL_LOGIN_URL", "/accounts/login/")
         guest_url = getattr(settings, "FAS_GUEST_URL", "/accounts/guest/")
+        # Escape basic HTML special chars in reason
+        safe = (
+            reason.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -177,7 +179,7 @@ class FASService:
 </head>
 <body>
   <h1>Network access denied</h1>
-  <p>{reason}</p>
+  <p>{safe}</p>
   <p><a href="{portal_url}">Sign in</a> · <a href="{guest_url}">Guest access</a></p>
 </body>
 </html>"""

@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for OpenHaus portal."""
+"""Shared pytest fixtures — verify signal silenced so tests control grants."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
 from django.utils import timezone
 
 from devices.models import Device
@@ -15,13 +16,56 @@ from quotas.models import QuotaAllocation, QuotaType
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _silence_verify_signal():
+    """Unit tests own membership / grants; do not auto-fire verify bonus."""
+    from accounts.models import CustomUser
+
+    # Support either signal function name
+    try:
+        from accounts.signals import on_email_verified as _sig
+    except ImportError:
+        try:
+            from accounts.signals import grant_signup_bonuses as _sig
+        except ImportError:
+            yield
+            return
+
+    post_save.disconnect(_sig, sender=CustomUser)
+    yield
+    post_save.connect(_sig, sender=CustomUser)
+
+
+@pytest.fixture
+def policy(db):
+    from access_policy.models import AccessPolicySettings
+
+    return AccessPolicySettings.get_solo()
+
+
 @pytest.fixture
 def user(db):
+    """Verified student with no auto trial / no membership unless fixture adds it."""
     return User.objects.create_user(
         email="student@example.com",
         password="test-pass-123",
         user_type="student",
         is_email_verified=True,
+        is_active=True,
+        signup_bonus_granted=True,
+        premium_trial_activated=True,
+        signup_temp_access_granted=True,
+        signup_temp_pending=False,
+    )
+
+
+@pytest.fixture
+def unverified_user(db):
+    return User.objects.create_user(
+        email="new@example.com",
+        password="test-pass-123",
+        user_type="guest",
+        is_email_verified=False,
         is_active=True,
     )
 
@@ -61,15 +105,18 @@ def guest_device(guest_user):
 
 @pytest.fixture
 def plan(db):
-    return MembershipPlan.objects.create(
-        name="Basic",
-        slug="basic",
-        duration_days=30,
-        included_quota_gb=10,
-        max_devices=3,
-        price=0,
-        is_active=True,
+    plan, _ = MembershipPlan.objects.get_or_create(
+        slug="premium-trial",
+        defaults={
+            "name": "Premium Trial",
+            "duration_days": 30,
+            "included_quota_gb": 50,
+            "max_devices": 5,
+            "price": 0,
+            "is_active": True,
+        },
     )
+    return plan
 
 
 @pytest.fixture

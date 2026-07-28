@@ -7,8 +7,7 @@ def test_fas_missing_mac():
     client = Client()
     response = client.get("/api/fas/?format=json")
     assert response.status_code == 400
-    data = response.json()
-    assert data["action"] == "block"
+    assert response.json()["action"] == "block"
 
 
 @pytest.mark.django_db
@@ -30,6 +29,8 @@ def test_fas_allow_json(user, device, active_membership, quota):
     assert data["action"] == "allow"
     assert data["username"] == user.email
     assert "session_id" in data
+    assert "quota_remaining" in data
+    assert "grant_seconds_remaining" in data
 
 
 @pytest.mark.django_db

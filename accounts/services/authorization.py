@@ -7,7 +7,7 @@ Order: device → account → membership OR time grant → session.
 
 from __future__ import annotations
 
-from access_policy.services import AccessDeniedError, AccessPolicyService
+from access_policy.services import AccessPolicyService
 from accounts.models import CustomUser
 from devices.models import Device
 from devices.services.devices import DeviceService

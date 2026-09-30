@@ -10,6 +10,7 @@ from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from access_policy.services import AccessPolicyService
 from accounts.models import CustomUser
 from accounts.services.authentication import AuthService
 from accounts.services.guest import GuestRewardService
@@ -57,7 +58,7 @@ def signup_view(request: HttpRequest):
         email = request.POST.get("email", "").strip().lower()
         password = request.POST.get("password", "").strip()
         password_confirm = request.POST.get("password_confirm", "").strip()
-        user_type = request.POST.get("user_type", "guest")
+        user_type = (request.POST.get("user_type", "guest") or "guest").strip().lower()
         university_id = request.POST.get("university_id", "").strip() or None
 
         context["email"] = email
@@ -66,6 +67,15 @@ def signup_view(request: HttpRequest):
             messages.error(request, "Passwords do not match.")
             return render(request, "registration/signup.html", context)
 
+        if user_type in ("student", "staff"):
+            if not AccessPolicyService.domain_allowed_for_student(email):
+                messages.error(
+                    request,
+                    "Student and staff accounts must use your institution email "
+                    "(@bazeuniversity.edu.ng).",
+                )
+                return render(request, "registration/signup.html", context)
+
         try:
             user = AuthService.register_user(
                 email=email,
@@ -73,28 +83,33 @@ def signup_view(request: HttpRequest):
                 user_type=user_type,
                 university_id=university_id,
             )
-            # Only if AUTH_AUTO_VERIFY_EMAIL is explicitly True (never via DEBUG alone).
-            # Saving is_email_verified=True fires on_email_verified → grant_verify_bonus.
             if getattr(settings, "AUTH_AUTO_VERIFY_EMAIL", False):
                 user.is_email_verified = True
                 user.save(update_fields=["is_email_verified"])
 
             AuthService.login_user(request=request, user=user)
-            if user.is_email_verified:
+
+            if not user.is_email_verified:
+                try:
+                    AuthService.send_verification_email(user, request=request)
+                except Exception:
+                    pass
                 messages.success(
                     request,
-                    "Account created and verified. Your post-verify benefits are active.",
+                    "Account created. Check your email (or the server console in dev) "
+                    "for a verification link. You have a short free access window until then.",
                 )
             else:
                 messages.success(
                     request,
-                    "Account created. You have a short free access window. "
-                    "Verify your email for full student or visitor benefits.",
+                    "Account created and verified. Your benefits are active.",
                 )
             return redirect("accounts:dashboard")
         except Exception as e:
             error_str = str(e).lower()
-            if "email" in error_str and ("already exists" in error_str or "unique" in error_str):
+            if "email" in error_str and (
+                "already exists" in error_str or "unique" in error_str
+            ):
                 messages.error(request, "An account with this email already exists.")
             else:
                 messages.error(request, str(e))
@@ -105,7 +120,6 @@ def signup_view(request: HttpRequest):
 @login_required
 def dashboard(request: HttpRequest):
     user: CustomUser = request.user
-    from access_policy.services import AccessPolicyService
 
     membership_summary = MembershipService.get_membership_summary(user)
     has_membership = bool(membership_summary.get("has_membership"))
@@ -142,7 +156,9 @@ def register_device(request: HttpRequest):
                 hostname=hostname,
                 platform=platform,
             )
-            messages.success(request, f"Device '{device.mac_address}' registered successfully.")
+            messages.success(
+                request, f"Device '{device.mac_address}' registered successfully."
+            )
             return redirect("accounts:dashboard")
         except Exception as e:
             messages.error(request, str(e))
@@ -153,7 +169,6 @@ def register_device(request: HttpRequest):
 @login_required
 def profile(request: HttpRequest):
     user = request.user
-    from access_policy.services import AccessPolicyService
 
     membership_summary = MembershipService.get_membership_summary(user)
     has_membership = bool(membership_summary.get("has_membership"))
@@ -170,13 +185,14 @@ def profile(request: HttpRequest):
         "has_active_membership": has_membership,
         "quota_status": QuotaService.get_quota_status(user) if has_membership else None,
         "active_session": SessionService.get_active_session(user=user),
+        "email_verified": user.is_email_verified,
     }
     return render(request, "accounts/profile.html", context)
 
 
 @require_http_methods(["GET", "POST"])
 def guest_access(request: HttpRequest):
-    """Guest access via watching an ad for temporary quota."""
+    """Guest access via ad reward → time grant (not data MB)."""
     if request.method == "POST":
         client_mac = (
             request.POST.get("client_mac")
@@ -190,15 +206,18 @@ def guest_access(request: HttpRequest):
             return redirect("accounts:guest_access")
 
         try:
-            reward = GuestRewardService.grant_ad_reward(client_mac)
-            if reward:
-                config = GuestRewardService.get_config()
+            seconds = GuestRewardService.grant_ad_reward(client_mac)
+            if seconds:
+                minutes = max(1, int(seconds) // 60)
                 messages.success(
                     request,
-                    f"Success! You received {config.reward_mb}MB of free data.",
+                    f"Success! You received about {minutes} minutes of free access.",
                 )
             else:
-                messages.warning(request, "Daily limit reached or reward failed. Try again later.")
+                messages.warning(
+                    request,
+                    "Daily ad limit reached or rewards are disabled. Try again later.",
+                )
         except Exception as e:
             messages.error(request, f"Failed to process reward: {e}")
 
@@ -228,7 +247,9 @@ def edit_profile(request: HttpRequest):
             user.save()
             messages.success(request, "Profile updated successfully.")
             if new_email and new_email != old_email:
-                messages.info(request, "Your new email needs verification. Check your inbox.")
+                messages.info(
+                    request, "Your new email needs verification. Check your inbox."
+                )
             return redirect("accounts:profile")
         except Exception as e:
             messages.error(request, str(e))
@@ -236,10 +257,28 @@ def edit_profile(request: HttpRequest):
     return render(request, "accounts/edit_profile.html", {"user": user})
 
 
+def verify_email(request: HttpRequest, uidb64: str, token: str):
+    try:
+        user = AuthService.verify_email_token(uidb64=uidb64, token=token)
+        messages.success(
+            request,
+            "Email verified. Your account benefits (trial / visitor bonus) are now active.",
+        )
+        if not request.user.is_authenticated:
+            AuthService.login_user(request=request, user=user)
+        return redirect("accounts:dashboard")
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect("accounts:login")
+
+
 @login_required
 def resend_verification(request: HttpRequest):
-    if AuthService.resend_verification_email(request.user):
-        messages.success(request, "Verification email has been resent. Please check your inbox.")
+    if AuthService.resend_verification_email(request.user, request=request):
+        messages.success(
+            request,
+            "Verification email sent. In development, check the runserver terminal for the link.",
+        )
     else:
         messages.info(request, "Your email is already verified.")
     return redirect("accounts:profile")

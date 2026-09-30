@@ -20,19 +20,16 @@
     </div>
 
     <div class="row g-4">
-        <!-- Primary: time access -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
                 <div class="card-body text-center p-4">
                     <h5 class="text-primary mb-3">⏱️ Free access window</h5>
                     {% if has_active_membership %}
                         <p class="text-muted mb-0">Covered by your membership (see next card).</p>
-                    {% elif has_valid_grant and grant_minutes_remaining > 0 %}
-                        <h1 class="display-4 fw-bold text-success">{{ grant_minutes_remaining }}</h1>
-                        <p class="text-muted">minutes remaining</p>
-                    {% elif has_valid_grant %}
-                        <h1 class="display-5 fw-bold text-success">&lt; 1 min</h1>
-                        <p class="text-muted">seconds left on your grant</p>
+                    {% elif has_valid_grant and grant_seconds_remaining > 0 %}
+                        <h1 class="display-6 fw-bold text-success mb-1" id="grant-countdown"
+                            data-seconds="{{ grant_seconds_remaining }}">—</h1>
+                        <p class="text-muted mb-0">remaining</p>
                     {% else %}
                         <h1 class="display-5 fw-bold text-secondary">0</h1>
                         <p class="text-muted">No active free window</p>
@@ -46,7 +43,6 @@
             </div>
         </div>
 
-        <!-- Membership -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
                 <div class="card-body p-4">
@@ -62,14 +58,13 @@
                         </p>
                         {% endif %}
                     {% else %}
-                        <p class="text-muted">No active membership</p>
-                        <a href="#" class="btn btn-outline-primary btn-sm">Choose a plan</a>
+                        <p class="text-muted mb-2">No active membership</p>
+                        <a href="{% url 'accounts:guest_access' %}" class="btn btn-outline-secondary btn-sm">Guest / ad access</a>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Session -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
                 <div class="card-body p-4">
@@ -84,7 +79,6 @@
             </div>
         </div>
 
-        <!-- Devices (unchanged layout) -->
         <div class="col-12">
             <div class="card shadow border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -131,4 +125,41 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+  function formatDuration(totalSeconds) {
+    totalSeconds = Math.max(0, Math.floor(totalSeconds));
+    var days = Math.floor(totalSeconds / 86400);
+    var hours = Math.floor((totalSeconds % 86400) / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+    var parts = [];
+    if (days > 0) parts.push(days + (days === 1 ? " day" : " days"));
+    if (hours > 0) parts.push(hours + (hours === 1 ? " hour" : " hours"));
+    if (days === 0 && hours === 0) {
+      parts.push(minutes + (minutes === 1 ? " min" : " mins"));
+      parts.push(seconds + (seconds === 1 ? " sec" : " secs"));
+    } else if (minutes > 0) {
+      parts.push(minutes + (minutes === 1 ? " min" : " mins"));
+    }
+    return parts.join(" ") || "0 secs";
+  }
+  var el = document.getElementById("grant-countdown");
+  if (!el) return;
+  var remaining = parseInt(el.getAttribute("data-seconds"), 10) || 0;
+  function tick() {
+    if (remaining <= 0) {
+      el.textContent = "Expired";
+      el.classList.remove("text-success");
+      el.classList.add("text-secondary");
+      return;
+    }
+    el.textContent = formatDuration(remaining);
+    remaining -= 1;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
 {% endblock %}

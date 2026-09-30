@@ -24,7 +24,9 @@ class AuthService:
             logger.log_authentication_failure(email or "", "invalid_credentials")
             raise InvalidCredentialsError("Invalid email or password.")
         AuthService.ensure_active_account(user)
-        AuthService.ensure_verified_email(user)
+        # Do NOT require email verification here.
+        # Unverified users may log in and use signup temp access;
+        # verify bonus / daily free stay gated in AccessPolicyService.
         return user  # type: ignore[return-value]
 
     @staticmethod

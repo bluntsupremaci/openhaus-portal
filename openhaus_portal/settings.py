@@ -158,5 +158,5 @@ FAS_BASE_URL = os.getenv("FAS_BASE_URL", "http://127.0.0.1:8000")
 FAS_PORTAL_LOGIN_URL = "/accounts/login/"
 FAS_GUEST_URL = "/accounts/guest/"
 
-# Dev-only: auto-verify email on signup when True
-AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True" or DEBUG
+# Explicit only. Do NOT tie to DEBUG — that grants verify bonus (trial/24h) on every signup.
+AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True"

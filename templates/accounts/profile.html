@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-lg-8 mx-auto">
-            
+
             <!-- Profile Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Your Profile</h2>
@@ -18,7 +18,7 @@
             <!-- Profile Card -->
             <div class="card shadow mb-4">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h4>Personal Information</h4>
+                    <h4 class="mb-0">Personal Information</h4>
                     {% if not user.is_email_verified %}
                         <a href="{% url 'accounts:resend_verification' %}" class="btn btn-sm btn-warning">
                             🔄 Resend Verification Email
@@ -35,18 +35,18 @@
                         <div class="col-md-6">
                             <p><strong>University ID:</strong> {{ user.university_id|default:"Not set" }}</p>
                             <p><strong>User Type:</strong> {{ user.get_user_type_display|default:user.user_type }}</p>
-                            <p><strong>Account Status:</strong> 
+                            <p><strong>Account Status:</strong>
                                 {% if user.is_active %}
                                     <span class="badge bg-success">Active</span>
                                 {% else %}
                                     <span class="badge bg-danger">Inactive</span>
                                 {% endif %}
                             </p>
-                            <p><strong>Email Verified:</strong> 
+                            <p class="mb-0"><strong>Email Verified:</strong>
                                 {% if user.is_email_verified %}
                                     <span class="badge bg-success">Yes</span>
                                 {% else %}
-                                    <span class="badge bg-warning">No - Please verify</span>
+                                    <span class="badge bg-warning">No — Please verify</span>
                                 {% endif %}
                             </p>
                         </div>
@@ -54,39 +54,40 @@
                 </div>
             </div>
 
-            <!-- Membership -->
+            <!-- Network access (time-first; data only secondary for members) -->
             <div class="card shadow mb-4">
                 <div class="card-header">
-                    <h5>Membership Status</h5>
+                    <h5 class="mb-0">Network access</h5>
                 </div>
                 <div class="card-body">
-                    {% if membership_summary and membership_summary.has_membership %}
-                        <div class="alert alert-success">
-                            <strong>{{ membership_summary.plan.name }}</strong><br>
-                            Expires: {{ membership_summary.end_date|date:"d M Y" }} 
-                            ({{ membership_summary.remaining_days }} days left)
-                        </div>
-                    {% else %}
-                        <div class="alert alert-warning">
-                            No active membership.
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+                    <p class="mb-3"><strong>Role:</strong> <code>{{ role }}</code></p>
 
-            <!-- Quota -->
-            <div class="card shadow mb-4">
-                <div class="card-header">
-                    <h5>Current Quota</h5>
-                </div>
-                <div class="card-body">
-                    {% if quota_status and quota_status.is_sufficient %}
-                        <div class="alert alert-info">
-                            Available: <strong>{{ quota_status.available_gb }} GB</strong>
+                    {% if has_active_membership %}
+                        <div class="alert alert-success mb-0">
+                            <strong>{{ membership_summary.plan.name }}</strong><br>
+                            Expires: {{ membership_summary.end_date|date:"d M Y" }}
+                            ({{ membership_summary.remaining_days }} days left)
+                            {% if quota_status and quota_status.available_gb %}
+                            <br>
+                            <span class="small">Plan data: {{ quota_status.available_gb }} GB</span>
+                            {% endif %}
+                        </div>
+                    {% elif has_valid_grant %}
+                        <div class="alert alert-info mb-0">
+                            Free access window:
+                            <strong>{{ grant_minutes_remaining }} minutes</strong> remaining
+                            {% if grant_seconds_remaining and grant_seconds_remaining < 60 %}
+                            <span class="small text-muted">(under 1 minute)</span>
+                            {% endif %}
                         </div>
                     {% else %}
-                        <div class="alert alert-danger">
-                            No quota available.
+                        <div class="alert alert-warning mb-0">
+                            No active membership or free access window.
+                            {% if not user.is_email_verified %}
+                            Verify your email for longer benefits.
+                            {% else %}
+                            Daily free may apply on next connection, or subscribe / watch an ad.
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
@@ -94,29 +95,30 @@
 
             <!-- Devices -->
             <div class="card shadow">
-                <div class="card-header d-flex justify-content-between">
-                    <h5>Your Devices ({{ devices|length }})</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Your Devices ({{ devices|length }})</h5>
                     <a href="{% url 'accounts:register_device' %}" class="btn btn-sm btn-primary">+ Add Device</a>
                 </div>
                 <div class="card-body">
-                    <ul class="list-group">
+                    <ul class="list-group list-group-flush">
                         {% for device in devices %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                 <div>
                                     <strong>{{ device.mac_address }}</strong>
                                     {% if device.hostname %} — {{ device.hostname }}{% endif %}
                                 </div>
                                 <div>
-                                    {% if device.is_trusted %}
-                                        <span class="badge bg-success">Trusted</span>
-                                    {% endif %}
                                     {% if device.is_blocked %}
                                         <span class="badge bg-danger">Blocked</span>
+                                    {% elif device.is_trusted %}
+                                        <span class="badge bg-success">Trusted</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Allowed</span>
                                     {% endif %}
                                 </div>
                             </li>
                         {% empty %}
-                            <li class="list-group-item text-muted">No devices registered yet.</li>
+                            <li class="list-group-item text-muted px-0">No devices registered yet.</li>
                         {% endfor %}
                     </ul>
                 </div>

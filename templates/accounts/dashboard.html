@@ -4,29 +4,43 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Welcome Header -->
-    <div class="row mb-5">
+    <div class="row mb-4">
         <div class="col-12">
             <h2 class="display-6 fw-bold">
-                Welcome back, {{ user.first_name|default:user.email|cut:"@bazeuniversity.edu.ng"|cut:"@" }} 👋
+                Welcome back, {{ user.first_name|default:user.email }} 👋
             </h2>
-            <p class="text-muted">Here's your network access overview</p>
+            <p class="text-muted mb-0">Network access overview · role: <code>{{ role }}</code></p>
+            {% if not email_verified %}
+            <div class="alert alert-warning mt-3 mb-0">
+                Email not verified. You only have the short signup access window until you verify.
+                <a href="{% url 'accounts:resend_verification' %}">Resend verification</a>
+            </div>
+            {% endif %}
         </div>
     </div>
 
     <div class="row g-4">
-        <!-- Quota Card -->
+        <!-- Primary: time access -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
-                <div class="card-body text-center p-5">
-                    <h5 class="text-primary mb-3">📊 Available Quota</h5>
-                    {% if quota_status and quota_status.available_gb > 0 %}
-                        <h1 class="display-4 fw-bold text-success">{{ quota_status.available_gb }} GB</h1>
-                        <p class="text-muted">Remaining this month</p>
+                <div class="card-body text-center p-4">
+                    <h5 class="text-primary mb-3">⏱️ Free access window</h5>
+                    {% if has_active_membership %}
+                        <p class="text-muted mb-0">Covered by your membership (see next card).</p>
+                    {% elif has_valid_grant and grant_minutes_remaining > 0 %}
+                        <h1 class="display-4 fw-bold text-success">{{ grant_minutes_remaining }}</h1>
+                        <p class="text-muted">minutes remaining</p>
+                    {% elif has_valid_grant %}
+                        <h1 class="display-5 fw-bold text-success">&lt; 1 min</h1>
+                        <p class="text-muted">seconds left on your grant</p>
                     {% else %}
-                        <h1 class="display-4 fw-bold text-danger">0 GB</h1>
-                        <p class="text-danger">No quota available</p>
-                        <a href="#" class="btn btn-outline-primary mt-3">Buy More Data</a>
+                        <h1 class="display-5 fw-bold text-secondary">0</h1>
+                        <p class="text-muted">No active free window</p>
+                        {% if email_verified %}
+                        <p class="small text-muted">Daily free may apply on next connection, or watch an ad / subscribe.</p>
+                        {% else %}
+                        <p class="small text-muted">Verify email for longer benefits.</p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -35,52 +49,57 @@
         <!-- Membership -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
-                <div class="card-body p-5">
-                    <h5 class="text-warning mb-3">⭐ Membership Status</h5>
-                    {% if membership_summary and membership_summary.has_membership %}
+                <div class="card-body p-4">
+                    <h5 class="text-warning mb-3">⭐ Membership</h5>
+                    {% if has_active_membership %}
                         <h4 class="fw-bold">{{ membership_summary.plan.name }}</h4>
-                        <p class="text-success">Active • Expires in {{ membership_summary.remaining_days }} days</p>
+                        <p class="text-success mb-0">
+                            Active · {{ membership_summary.remaining_days }} days left
+                        </p>
+                        {% if quota_status and quota_status.available_gb %}
+                        <p class="small text-muted mt-2 mb-0">
+                            Plan data: {{ quota_status.available_gb }} GB
+                        </p>
+                        {% endif %}
                     {% else %}
                         <p class="text-muted">No active membership</p>
-                        <a href="#" class="btn btn-outline-primary btn-sm">Choose a Plan</a>
+                        <a href="#" class="btn btn-outline-primary btn-sm">Choose a plan</a>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Active Session -->
+        <!-- Session -->
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
-                <div class="card-body p-5">
-                    <h5 class="text-info mb-3">🔗 Current Session</h5>
+                <div class="card-body p-4">
+                    <h5 class="text-info mb-3">🔗 Current session</h5>
                     {% if active_session %}
-                        <p class="text-success fw-bold">Connected</p>
-                        <small>Started {{ active_session.started_at|timesince }} ago</small>
+                        <p class="text-success fw-bold mb-1">Connected</p>
+                        <small class="text-muted">Started {{ active_session.started_at|timesince }} ago</small>
                     {% else %}
-                        <p class="text-muted">No active session</p>
+                        <p class="text-muted mb-0">No active session</p>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Devices -->
+        <!-- Devices (unchanged layout) -->
         <div class="col-12">
             <div class="card shadow border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Your Devices ({{ devices|length }})</h5>
-                    <a href="{% url 'accounts:register_device' %}" class="btn btn-primary btn-sm">
-                        + Register New Device
-                    </a>
+                    <h5 class="mb-0">Your devices ({{ devices|length }})</h5>
+                    <a href="{% url 'accounts:register_device' %}" class="btn btn-primary btn-sm">+ Register device</a>
                 </div>
                 <div class="card-body">
                     {% if devices %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th>MAC Address</th>
+                                    <th>MAC</th>
                                     <th>Hostname</th>
-                                    <th>Last Seen</th>
+                                    <th>Last seen</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -91,10 +110,10 @@
                                     <td>{{ device.hostname|default:"—" }}</td>
                                     <td>{{ device.last_seen|timesince }} ago</td>
                                     <td>
-                                        {% if device.is_trusted %}
-                                            <span class="badge bg-success">Trusted</span>
-                                        {% elif device.is_blocked %}
+                                        {% if device.is_blocked %}
                                             <span class="badge bg-danger">Blocked</span>
+                                        {% elif device.is_trusted %}
+                                            <span class="badge bg-success">Trusted</span>
                                         {% else %}
                                             <span class="badge bg-secondary">Allowed</span>
                                         {% endif %}
@@ -105,7 +124,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted text-center py-5">You haven't registered any devices yet.</p>
+                    <p class="text-muted text-center py-4 mb-0">No devices registered yet.</p>
                     {% endif %}
                 </div>
             </div>

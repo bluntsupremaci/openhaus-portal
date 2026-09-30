@@ -29,6 +29,11 @@ def login_view(request: HttpRequest):
         try:
             user = AuthService.authenticate_client(email=email, password=password)
             AuthService.login_user(request=request, user=user)
+            if not user.is_email_verified:
+                messages.warning(
+                    request,
+                    "Your email is not verified yet. You only have limited free access until you verify.",
+                )
             return redirect("accounts:dashboard")
         except Exception as e:
             messages.error(request, str(e))
@@ -68,17 +73,24 @@ def signup_view(request: HttpRequest):
                 user_type=user_type,
                 university_id=university_id,
             )
-            # Dev convenience: optional auto-verify when DEBUG and setting enabled
+            # Only if AUTH_AUTO_VERIFY_EMAIL is explicitly True (never via DEBUG alone).
+            # Saving is_email_verified=True fires on_email_verified → grant_verify_bonus.
             if getattr(settings, "AUTH_AUTO_VERIFY_EMAIL", False):
                 user.is_email_verified = True
                 user.save(update_fields=["is_email_verified"])
 
             AuthService.login_user(request=request, user=user)
-            messages.success(
-                request,
-                "Account created successfully. "
-                "Please verify your email when verification is enabled.",
-            )
+            if user.is_email_verified:
+                messages.success(
+                    request,
+                    "Account created and verified. Your post-verify benefits are active.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Account created. You have a short free access window. "
+                    "Verify your email for full student or visitor benefits.",
+                )
             return redirect("accounts:dashboard")
         except Exception as e:
             error_str = str(e).lower()
@@ -93,15 +105,26 @@ def signup_view(request: HttpRequest):
 @login_required
 def dashboard(request: HttpRequest):
     user: CustomUser = request.user
+    from access_policy.services import AccessPolicyService
+
+    membership_summary = MembershipService.get_membership_summary(user)
+    has_membership = bool(membership_summary.get("has_membership"))
+    grant_seconds = AccessPolicyService.total_remaining_seconds(user)
+
     context = {
         "user": user,
-        "membership_summary": MembershipService.get_membership_summary(user),
-        "quota_status": QuotaService.get_quota_status(user),
+        "role": AccessPolicyService.resolve_role(user),
+        "grant_seconds_remaining": grant_seconds,
+        "grant_minutes_remaining": max(0, grant_seconds // 60),
+        "has_valid_grant": AccessPolicyService.has_valid_time_grant(user),
+        "membership_summary": membership_summary,
+        "has_active_membership": has_membership,
+        "quota_status": QuotaService.get_quota_status(user) if has_membership else None,
         "devices": DeviceService.get_user_devices(user),
         "active_devices_count": DeviceService.get_active_devices(user).count(),
         "active_session": SessionService.get_active_session(user=user),
+        "email_verified": user.is_email_verified,
     }
-    context["has_active_membership"] = bool(context["membership_summary"].get("has_membership"))
     return render(request, "accounts/dashboard.html", context)
 
 
@@ -130,11 +153,22 @@ def register_device(request: HttpRequest):
 @login_required
 def profile(request: HttpRequest):
     user = request.user
+    from access_policy.services import AccessPolicyService
+
+    membership_summary = MembershipService.get_membership_summary(user)
+    has_membership = bool(membership_summary.get("has_membership"))
+    grant_seconds = AccessPolicyService.total_remaining_seconds(user)
+
     context = {
         "user": user,
+        "role": AccessPolicyService.resolve_role(user),
+        "grant_seconds_remaining": grant_seconds,
+        "grant_minutes_remaining": max(0, grant_seconds // 60),
+        "has_valid_grant": AccessPolicyService.has_valid_time_grant(user),
         "devices": DeviceService.get_user_devices(user),
-        "membership_summary": MembershipService.get_membership_summary(user),
-        "quota_status": QuotaService.get_quota_status(user),
+        "membership_summary": membership_summary,
+        "has_active_membership": has_membership,
+        "quota_status": QuotaService.get_quota_status(user) if has_membership else None,
         "active_session": SessionService.get_active_session(user=user),
     }
     return render(request, "accounts/profile.html", context)

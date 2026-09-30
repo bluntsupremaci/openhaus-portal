@@ -77,28 +77,47 @@ class QuotaAllocation(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.user.email} | {self.get_quota_type_display()} | {self.remaining_bytes:,} bytes left"
+        try:
+            left = self.remaining_bytes
+            type_label = self.get_quota_type_display()
+        except Exception:
+            left = 0
+            type_label = self.quota_type or "?"
+        email = getattr(self.user, "email", "?")
+        return f"{email} | {type_label} | {left:,} bytes left"
 
     @property
     def remaining_bytes(self) -> int:
         """Current remaining quota."""
-        return max(0, self.total_bytes - self.used_bytes)
+        total = self.total_bytes
+        used = self.used_bytes
+        if total is None or used is None:
+            return 0
+        return max(0, int(total) - int(used))
 
     @property
     def consumed_bytes(self) -> int:
         """Bytes already used."""
-        return self.used_bytes
+        used = self.used_bytes
+        return int(used) if used is not None else 0
 
     def clean(self) -> None:
         super().clean()
-
-        if self.total_bytes < 0:
+        if self.total_bytes is not None and self.total_bytes < 0:
             raise ValidationError("Total quota cannot be negative.")
-        if self.used_bytes < 0:
+        if self.used_bytes is not None and self.used_bytes < 0:
             raise ValidationError("Used bytes cannot be negative.")
-        if self.used_bytes > self.total_bytes:
+        if (
+            self.total_bytes is not None
+            and self.used_bytes is not None
+            and self.used_bytes > self.total_bytes
+        ):
             raise ValidationError("Used bytes cannot exceed total quota.")
-        if self.expires_at <= self.granted_at:
+        if (
+            self.expires_at is not None
+            and self.granted_at is not None
+            and self.expires_at <= self.granted_at
+        ):
             raise ValidationError("Expiration must be after grant time.")
 
     def save(self, *args, **kwargs) -> None:

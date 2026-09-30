@@ -138,26 +138,30 @@ class UserMembership(models.Model):
     @property
     def is_valid(self) -> bool:
         """True if currently active and not expired."""
+        if self.end_date is None:
+            return False
         return self.status == MembershipStatus.ACTIVE and self.end_date > timezone.now()
 
     @property
     def has_expired(self) -> bool:
         """True if past end_date."""
+        if self.end_date is None:
+            return False
         return timezone.now() >= self.end_date
 
     @property
     def remaining_days(self) -> int:
-        """Days remaining (0 if expired)."""
-        if self.has_expired or not self.end_date:
+        """Days remaining (0 if expired or unset)."""
+        if self.end_date is None or self.has_expired:
             return 0
-        return (self.end_date - timezone.now()).days
+        return max(0, (self.end_date - timezone.now()).days)
 
     @property
     def remaining_seconds(self) -> int:
-        """Seconds remaining (0 if expired)."""
-        if self.has_expired or not self.end_date:
+        """Seconds remaining (0 if expired or unset)."""
+        if self.end_date is None or self.has_expired:
             return 0
-        return int((self.end_date - timezone.now()).total_seconds())
+        return max(0, int((self.end_date - timezone.now()).total_seconds()))
 
     def save(self, *args, **kwargs) -> None:
         """Full validation on save."""

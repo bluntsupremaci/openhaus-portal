@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "uev87@x@xcf2(2870yehdo2^f21m#+gi^4&xi8gr)2*r6s9+*!")
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
 # Prefer explicit hosts via env in non-debug

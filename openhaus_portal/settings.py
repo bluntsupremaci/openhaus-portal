@@ -158,5 +158,27 @@ FAS_BASE_URL = os.getenv("FAS_BASE_URL", "http://127.0.0.1:8000")
 FAS_PORTAL_LOGIN_URL = "/accounts/login/"
 FAS_GUEST_URL = "/accounts/guest/"
 
+# openhaus_portal/settings.py
+OPENNDS_FAS_KEY = os.getenv(
+    "OPENNDS_FAS_KEY",
+    "f901698444084cb1ed54d306c9d61528848357f95461ce3099454b4b06496cdb",
+)
+
 # Explicit only. Do NOT tie to DEBUG — that grants verify bonus (trial/24h) on every signup.
 AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True"
+
+# Email (dev: print to console; prod: set SMTP via env)
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = os.getenv(
+        "EMAIL_BACKEND",
+        "django.core.mail.backends.smtp.EmailBackend",
+    )
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OpenHaus <noreply@openhaus.local>")

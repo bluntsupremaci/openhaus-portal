@@ -37,6 +37,7 @@ class AccessPolicySettingsAdmin(admin.ModelAdmin):
                     "verify_student_trial_days",
                     "verify_student_trial_plan_slug",
                     "verify_non_student_hours",
+                    "student_email_domains",
                 ),
             },
         ),

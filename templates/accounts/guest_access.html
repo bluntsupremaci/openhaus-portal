@@ -11,38 +11,69 @@
                     <h4 class="mb-0">Guest free access</h4>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">
-                        Watch a short ad to earn <strong>free access time</strong>
-                        (minutes, not data quota). Limits are set by the network admin.
-                    </p>
-                    <p class="small text-muted">
-                        Enter the MAC address of the device you will use on campus Wi‑Fi.
-                    </p>
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
 
-                    <form method="post" action="{% url 'accounts:guest_access' %}">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="client_mac" class="form-label">Device MAC address</label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="client_mac"
-                                   name="client_mac"
-                                   placeholder="AA:BB:CC:DD:EE:FF"
-                                   required
-                                   autocomplete="off">
+                    {% if not mac_detected %}
+                        <div class="alert alert-warning mb-0">
+                            <strong>Device not detected.</strong><br>
+                            Connect to campus Wi‑Fi. When the captive portal opens, choose
+                            Guest access so your device is identified automatically.
+                            Browsers cannot read a Wi‑Fi MAC address on their own.
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">
-                            Watch ad &amp; get free time
-                        </button>
-                    </form>
+                        <p class="text-center small mt-3 mb-0">
+                            <a href="{% url 'accounts:login' %}">Sign in</a>
+                            if you already have an account.
+                        </p>
+                    {% else %}
+                        {% if not ad_reward_enabled %}
+                            <div class="alert alert-warning">
+                                Ad rewards are currently disabled by the network admin.
+                            </div>
+                        {% else %}
+                            <p class="text-muted">
+                                Earn about <strong>{{ ad_reward_minutes }} minutes</strong>
+                                of free access (up to <strong>{{ ad_daily_limit }}</strong> per day).
+                            </p>
+                        {% endif %}
 
-                    <hr>
-                    <p class="mb-0 small">
-                        Have an account?
-                        <a href="{% url 'accounts:login' %}">Sign in</a>
-                        ·
-                        <a href="{% url 'accounts:signup' %}">Create account</a>
-                    </p>
+                        <div class="alert alert-success py-3">
+                            <strong>Device detected</strong>
+                            <ul class="list-unstyled mb-0 mt-2">
+                                <li>
+                                    <span class="text-muted">MAC:</span>
+                                    <code>{{ client_mac }}</code>
+                                </li>
+                                <li class="mt-1">
+                                    <span class="text-muted">Name:</span>
+                                    <strong>{{ device_name|default:"Unknown device" }}</strong>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="btn btn-primary w-100"
+                                    {% if not ad_reward_enabled %}disabled{% endif %}>
+                                Watch ad &amp; unlock free time
+                            </button>
+                        </form>
+
+                        <hr>
+                        <p class="mb-0 small text-center">
+                            Have an account?
+                            <a href="{% url 'accounts:login' %}">Sign in</a>
+                            ·
+                            <a href="{% url 'accounts:signup' %}">Create account</a>
+                        </p>
+                    {% endif %}
                 </div>
             </div>
         </div>

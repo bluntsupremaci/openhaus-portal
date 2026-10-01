@@ -142,7 +142,8 @@ class AccessPolicyService:
 
         policy = AccessPolicyService.settings()
 
-        if AccessPolicyService.is_university_member(user):
+        # 1-month trial only for @bazeuniversity.edu.ng (etc.), any campus role
+        if AccessPolicyService.email_is_institution_domain(user.email or ""):
             if not user.premium_trial_activated:
                 MembershipService.grant_premium_trial(
                     user=user,
@@ -161,7 +162,7 @@ class AccessPolicyService:
                 grant_type=AccessGrantType.VERIFY_BONUS,
                 duration_seconds=duration,
                 expires_at=now + timedelta(seconds=duration),
-                notes=f"Verify bonus {hours}h",
+                notes=f"Verify bonus {hours}h (non-institution email)",
             )
 
         user.signup_bonus_granted = True
@@ -248,3 +249,27 @@ class AccessPolicyService:
             "No active plan or free access window. "
             "Verify email, use daily free, watch an ad, or subscribe."
         )
+
+    @staticmethod
+    def email_is_institution_domain(email: str) -> bool:
+        """True if email uses an allowed campus domain (Admin: student_email_domains)."""
+        policy = AccessPolicyService.settings()
+        email = (email or "").strip().lower()
+        if "@" not in email:
+            return False
+        domain = email.rsplit("@", 1)[-1]
+        allowed = [
+            d.strip().lower().lstrip("@")
+            for d in (policy.student_email_domains or "").split(",")
+            if d.strip()
+        ]
+        return domain in allowed
+
+    @staticmethod
+    def domain_allowed_for_student(email: str) -> bool:
+        """Alias used at signup (student + staff)."""
+        return AccessPolicyService.email_is_institution_domain(email)
+
+    @staticmethod
+    def email_is_student_domain(user: CustomUser) -> bool:
+        return AccessPolicyService.email_is_institution_domain(user.email or "")

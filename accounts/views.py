@@ -192,39 +192,116 @@ def profile(request: HttpRequest):
 
 @require_http_methods(["GET", "POST"])
 def guest_access(request: HttpRequest):
-    """Guest access via ad reward → time grant (not data MB)."""
-    if request.method == "POST":
-        client_mac = (
-            request.POST.get("client_mac")
-            or request.GET.get("clientmac")
-            or request.GET.get("client_mac")
-            or ""
-        ).strip()
+    """
+    Ad reward → time grant.
+    MAC + optional hostname from openNDS/FAS query or session only.
+    """
 
-        if not client_mac:
-            messages.error(request, "Device MAC address is required for guest access.")
-            return redirect("accounts:guest_access")
+    def normalize_mac(raw) -> str:
+        if not raw:
+            return ""
+        mac = str(raw).strip().upper().replace("-", ":")
+        parts = mac.split(":")
+        if len(parts) != 6:
+            return ""
+        if not all(
+            len(p) == 2 and all(c in "0123456789ABCDEF" for c in p) for p in parts
+        ):
+            return ""
+        return mac
+
+    # Query first (portal redirect), then session
+    mac = normalize_mac(
+        request.GET.get("clientmac")
+        or request.GET.get("client_mac")
+        or request.GET.get("mac")
+    )
+    hostname_from_portal = (
+        request.GET.get("clienthostname")
+        or request.GET.get("client_hostname")
+        or request.GET.get("hostname")
+        or ""
+    ).strip()[:64]
+
+    if mac:
+        request.session["guest_client_mac"] = mac
+        request.session.modified = True
+    else:
+        mac = normalize_mac(request.session.get("guest_client_mac"))
+
+    if hostname_from_portal:
+        request.session["guest_client_hostname"] = hostname_from_portal
+        request.session.modified = True
+
+    session_hostname = (request.session.get("guest_client_hostname") or "").strip()
+
+    # Prefer registered device name, else portal/session hostname
+    device_name = ""
+    if mac:
+        try:
+            device = DeviceService.get_device(mac)
+            device_name = (
+                getattr(device, "hostname", None)
+                or getattr(device, "name", None)
+                or ""
+            )
+            device_name = (device_name or "").strip()
+        except Exception:
+            device_name = ""
+
+    if not device_name:
+        device_name = session_hostname or hostname_from_portal or "Unknown device"
+
+    policy = AccessPolicyService.settings()
+    context = {
+        "client_mac": mac,
+        "mac_detected": bool(mac),
+        "device_name": device_name,
+        "ad_reward_enabled": getattr(policy, "ad_reward_enabled", True),
+        "ad_reward_minutes": getattr(policy, "ad_reward_minutes", 20),
+        "ad_daily_limit": getattr(policy, "ad_daily_limit", 3),
+    }
+
+    if request.method == "POST":
+        if not mac:
+            messages.error(
+                request,
+                "Device not detected. Join campus Wi‑Fi and open Guest access "
+                "from the captive portal.",
+            )
+            return render(request, "accounts/guest_access.html", context)
 
         try:
-            seconds = GuestRewardService.grant_ad_reward(client_mac)
+            # Pass portal hostname so first registration is not always "guest-device"
+            seconds = GuestRewardService.grant_ad_reward(
+                mac,
+                hostname=session_hostname or hostname_from_portal or None,
+            )
             if seconds:
                 minutes = max(1, int(seconds) // 60)
                 messages.success(
                     request,
-                    f"Success! You received about {minutes} minutes of free access.",
+                    f"Success! About {minutes} minutes of free access for this device.",
                 )
+                # Refresh name after register
+                try:
+                    device = DeviceService.get_device(mac)
+                    context["device_name"] = (
+                        getattr(device, "hostname", None) or context["device_name"]
+                    )
+                except Exception:
+                    pass
             else:
                 messages.warning(
                     request,
-                    "Daily ad limit reached or rewards are disabled. Try again later.",
+                    "Daily ad limit reached or ad rewards are disabled. Try again later.",
                 )
         except Exception as e:
             messages.error(request, f"Failed to process reward: {e}")
 
-        return redirect("accounts:guest_access")
+        return render(request, "accounts/guest_access.html", context)
 
-    return render(request, "accounts/guest_access.html")
-
+    return render(request, "accounts/guest_access.html", context)
 
 @login_required
 def edit_profile(request: HttpRequest):

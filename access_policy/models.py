@@ -35,7 +35,6 @@ class AccessPolicySettings(models.Model):
         verbose_name=_("Start signup timer on first connect"),
         help_text=_("On: clock starts at first Wi‑Fi allow. Off: at signup."),
     )
-
     verify_student_trial_days = models.PositiveIntegerField(
         default=30,
         verbose_name=_("Student trial (days)"),
@@ -51,7 +50,15 @@ class AccessPolicySettings(models.Model):
         verbose_name=_("Non-student free hours"),
         help_text=_("After verify: one free time window for non-students."),
     )
-
+    student_email_domains = models.CharField(
+        max_length=255,
+        default="bazeuniversity.edu.ng,bazeuniversity.ng",
+        verbose_name=_("Institution email domains"),
+        help_text=_(
+            "Comma-separated domains for campus trial "
+            "(e.g. bazeuniversity.edu.ng)."
+        ),
+    )
     daily_free_enabled = models.BooleanField(
         default=True,
         verbose_name=_("Daily free access"),

@@ -7,48 +7,75 @@
     <div class="col-md-6 col-lg-5">
         <div class="card shadow">
             <div class="card-header text-center bg-success text-white">
-                <h4>Create Account</h4>
+                <h4 class="mb-0">Create Account</h4>
             </div>
             <div class="card-body">
                 {% if messages %}
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                             {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endfor %}
                 {% endif %}
 
-                <form method="post">
+                <form method="post" novalidate>
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" value="{{ email|default:'' }}" required autofocus>
+                        <label class="form-label" for="id_email">Email Address</label>
+                        <input type="email"
+                               name="email"
+                               id="id_email"
+                               class="form-control"
+                               value="{{ email|default:'' }}"
+                               required
+                               autofocus
+                               autocomplete="email">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" name="password" class="form-control" required>
+                        <label class="form-label" for="id_password">Password</label>
+                        <input type="password"
+                               name="password"
+                               id="id_password"
+                               class="form-control"
+                               required
+                               autocomplete="new-password">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Confirm Password</label>
-                        <input type="password" name="password_confirm" class="form-control" required>
+                        <label class="form-label" for="id_password_confirm">Confirm Password</label>
+                        <input type="password"
+                               name="password_confirm"
+                               id="id_password_confirm"
+                               class="form-control"
+                               required
+                               autocomplete="new-password">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Account Type</label>
-                        <select name="user_type" class="form-select">
+                        <label class="form-label" for="id_user_type">Account Type</label>
+                        <select name="user_type" id="id_user_type" class="form-select">
                             <option value="student">Student</option>
                             <option value="staff">Staff</option>
                             <option value="guest">Guest / Others</option>
                         </select>
+                        <div class="form-text">
+                            <strong>Student</strong> and <strong>Staff</strong> must use an institution email
+                            (e.g. <code>@bazeuniversity.edu.ng</code>) to qualify for the free campus trial after verification.
+                            Guests may use any email.
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">University ID (Students & Staff only)</label>
-                        <input type="text" name="university_id" class="form-control" placeholder="e.g. BU/22C/IT/7240">
+                        <label class="form-label" for="id_university_id">University ID (Students &amp; Staff)</label>
+                        <input type="text"
+                               name="university_id"
+                               id="id_university_id"
+                               class="form-control"
+                               placeholder="e.g. BU/22C/IT/7240"
+                               autocomplete="off">
                     </div>
 
                     <button type="submit" class="btn btn-success w-100 mb-3">Create Account</button>
@@ -63,8 +90,8 @@
                 </div>
                 {% endif %}
 
-                <p class="text-center mt-3">
-                    Already have an account? 
+                <p class="text-center mb-0">
+                    Already have an account?
                     <a href="{% url 'accounts:login' %}">Login here</a>
                 </p>
             </div>

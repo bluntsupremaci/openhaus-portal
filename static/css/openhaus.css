@@ -1,0 +1,39 @@
+body {
+	background-color: #f4f6f8;
+}
+
+.navbar-brand {
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+
+.oh-card {
+	border: 0;
+	border-radius: 16px;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.oh-card-header {
+	border-radius: 16px 16px 0 0 !important;
+	padding: 1.25rem 1.5rem;
+}
+
+.oh-auth-wrap {
+	max-width: 440px;
+	margin: 2rem auto;
+}
+
+.oh-auth-wrap-lg {
+	max-width: 520px;
+	margin: 2rem auto;
+}
+
+.oh-stat-value {
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.oh-mac {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 0.875rem;
+}

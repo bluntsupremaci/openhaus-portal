@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Membership - OpenHaus{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">Your membership</h2>
+
+  {% if has_active_membership and active_membership %}
+  <div class="card shadow border-0 mb-4">
+    <div class="card-body">
+      <h4 class="mb-1">{{ active_membership.plan.name }}</h4>
+      <p class="text-success mb-2">
+        Active · {{ membership_summary.remaining_days }} days left
+      </p>
+      <ul class="list-unstyled small text-muted mb-0">
+        <li>Status: {{ active_membership.get_status_display|default:active_membership.status }}</li>
+        <li>Ends: {{ active_membership.end_date|date:"d M Y H:i" }}</li>
+        <li>Devices allowed: {{ active_membership.plan.max_devices }}</li>
+        <li>Plan length: {{ active_membership.plan.duration_days }} days</li>
+      </ul>
+      <a href="{% url 'payments:checkout' active_membership.plan.id %}"
+         class="btn btn-outline-primary btn-sm mt-3">
+        Renew this plan
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">No active membership.</div>
+  {% endif %}
+
+  <h3 class="h5 mb-3">Available plans</h3>
+  <div class="row g-3">
+    {% for plan in plans %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow border-0">
+        <div class="card-body d-flex flex-column">
+          <h5>{{ plan.name }}</h5>
+          <p class="text-muted small">{{ plan.description|default:"" }}</p>
+          <p class="fs-4 fw-bold mb-1">{{ plan.currency }} {{ plan.price }}</p>
+          <p class="small text-muted mb-3">
+            {{ plan.duration_days }} days · up to {{ plan.max_devices }} devices
+          </p>
+          <a href="{% url 'payments:checkout' plan.id %}" class="btn btn-primary mt-auto">
+            {% if has_active_membership and active_membership and active_membership.plan_id == plan.id %}
+              Renew
+            {% elif has_active_membership %}
+              Switch to this plan
+            {% else %}
+              Buy plan
+            {% endif %}
+          </a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <p class="text-muted">No plans available. Add plans in Admin.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

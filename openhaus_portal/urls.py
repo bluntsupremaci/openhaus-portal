@@ -23,4 +23,5 @@ urlpatterns = [
         auth_views.LogoutView.as_view(next_page="/admin/"),
         name="admin_logout",
     ),
+    path("payments/", include("payments.urls")),
 ]

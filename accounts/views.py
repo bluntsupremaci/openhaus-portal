@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest
 from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from access_policy.services import AccessPolicyService
@@ -19,9 +20,50 @@ from memberships.services.memberships import MembershipService
 from portal_sessions.services.sessions import SessionService
 from quotas.services.quotas import QuotaService
 
+ROLE_LABELS = {
+    "student": "Student",
+    "staff": "Staff",
+    "guest": "Guest",
+    "member": "Member",
+}
+
+VERIFICATION_LABELS = {
+    "verified": "Verified",
+    "unverified": "Not verified",
+    "n/a": "",
+}
+
+
+def role_label_for(user) -> str:
+    code = AccessPolicyService.resolve_role(user)
+    return ROLE_LABELS.get(code, "Guest")
+
+
+def verification_label_for(user) -> str:
+    code = AccessPolicyService.resolve_verification_status(user)
+    return VERIFICATION_LABELS.get(code, "")
+
+
+def _role_context(user: CustomUser) -> dict:
+    """Shared role + verification fields for dashboard/profile."""
+    role_code = AccessPolicyService.resolve_role(user)
+    ver_code = AccessPolicyService.resolve_verification_status(user)
+    return {
+        "role": role_code,
+        "role_label": ROLE_LABELS.get(role_code, "Guest"),
+        "verification_status": ver_code,
+        "verification_label": VERIFICATION_LABELS.get(ver_code, ""),
+        "email_verified": bool(getattr(user, "is_email_verified", False)),
+    }
+
 
 def login_view(request: HttpRequest):
     if request.user.is_authenticated:
+        next_url = request.GET.get("next") or request.POST.get("next")
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            return redirect(next_url)
         return redirect("accounts:dashboard")
 
     if request.method == "POST":
@@ -30,16 +72,28 @@ def login_view(request: HttpRequest):
         try:
             user = AuthService.authenticate_client(email=email, password=password)
             AuthService.login_user(request=request, user=user)
-            if not user.is_email_verified:
+
+            ut = (getattr(user, "user_type", None) or "guest").strip().lower()
+            if ut in ("student", "staff") and not user.is_email_verified:
                 messages.warning(
                     request,
                     "Your email is not verified yet. You only have limited free access until you verify.",
                 )
+
+            next_url = request.POST.get("next") or request.GET.get("next")
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
             return redirect("accounts:dashboard")
         except Exception as e:
             messages.error(request, str(e))
 
-    return render(request, "registration/login.html")
+    return render(
+        request,
+        "registration/login.html",
+        {"next": request.GET.get("next", "")},
+    )
 
 
 def logout_view(request: HttpRequest):
@@ -89,7 +143,7 @@ def signup_view(request: HttpRequest):
 
             AuthService.login_user(request=request, user=user)
 
-            if not user.is_email_verified:
+            if user_type in ("student", "staff") and not user.is_email_verified:
                 try:
                     AuthService.send_verification_email(user, request=request)
                 except Exception:
@@ -102,7 +156,7 @@ def signup_view(request: HttpRequest):
             else:
                 messages.success(
                     request,
-                    "Account created and verified. Your benefits are active.",
+                    "Account created. Your access is ready.",
                 )
             return redirect("accounts:dashboard")
         except Exception as e:
@@ -127,7 +181,7 @@ def dashboard(request: HttpRequest):
 
     context = {
         "user": user,
-        "role": AccessPolicyService.resolve_role(user),
+        **_role_context(user),
         "grant_seconds_remaining": grant_seconds,
         "grant_minutes_remaining": max(0, grant_seconds // 60),
         "has_valid_grant": AccessPolicyService.has_valid_time_grant(user),
@@ -137,7 +191,6 @@ def dashboard(request: HttpRequest):
         "devices": DeviceService.get_user_devices(user),
         "active_devices_count": DeviceService.get_active_devices(user).count(),
         "active_session": SessionService.get_active_session(user=user),
-        "email_verified": user.is_email_verified,
     }
     return render(request, "accounts/dashboard.html", context)
 
@@ -176,7 +229,7 @@ def profile(request: HttpRequest):
 
     context = {
         "user": user,
-        "role": AccessPolicyService.resolve_role(user),
+        **_role_context(user),
         "grant_seconds_remaining": grant_seconds,
         "grant_minutes_remaining": max(0, grant_seconds // 60),
         "has_valid_grant": AccessPolicyService.has_valid_time_grant(user),
@@ -185,7 +238,6 @@ def profile(request: HttpRequest):
         "has_active_membership": has_membership,
         "quota_status": QuotaService.get_quota_status(user) if has_membership else None,
         "active_session": SessionService.get_active_session(user=user),
-        "email_verified": user.is_email_verified,
     }
     return render(request, "accounts/profile.html", context)
 
@@ -210,7 +262,6 @@ def guest_access(request: HttpRequest):
             return ""
         return mac
 
-    # Query first (portal redirect), then session
     mac = normalize_mac(
         request.GET.get("clientmac")
         or request.GET.get("client_mac")
@@ -235,7 +286,6 @@ def guest_access(request: HttpRequest):
 
     session_hostname = (request.session.get("guest_client_hostname") or "").strip()
 
-    # Prefer registered device name, else portal/session hostname
     device_name = ""
     if mac:
         try:
@@ -272,7 +322,6 @@ def guest_access(request: HttpRequest):
             return render(request, "accounts/guest_access.html", context)
 
         try:
-            # Pass portal hostname so first registration is not always "guest-device"
             seconds = GuestRewardService.grant_ad_reward(
                 mac,
                 hostname=session_hostname or hostname_from_portal or None,
@@ -283,7 +332,6 @@ def guest_access(request: HttpRequest):
                     request,
                     f"Success! About {minutes} minutes of free access for this device.",
                 )
-                # Refresh name after register
                 try:
                     device = DeviceService.get_device(mac)
                     context["device_name"] = (
@@ -302,6 +350,7 @@ def guest_access(request: HttpRequest):
         return render(request, "accounts/guest_access.html", context)
 
     return render(request, "accounts/guest_access.html", context)
+
 
 @login_required
 def edit_profile(request: HttpRequest):

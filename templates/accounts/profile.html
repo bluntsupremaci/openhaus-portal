@@ -8,18 +8,18 @@
         <div class="col-lg-8 mx-auto">
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Your Profile</h2>
+                <h2 class="mb-0">Your Profile</h2>
                 <a href="{% url 'accounts:edit_profile' %}" class="btn btn-outline-primary">
-                    ✏️ Edit Profile
+                    Edit profile
                 </a>
             </div>
 
             <div class="card shadow mb-4">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Personal Information</h4>
-                    {% if not user.is_email_verified %}
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h4 class="mb-0">Personal information</h4>
+                    {% if verification_status == "unverified" %}
                         <a href="{% url 'accounts:resend_verification' %}" class="btn btn-sm btn-warning">
-                            🔄 Resend Verification Email
+                            Resend verification email
                         </a>
                     {% endif %}
                 </div>
@@ -27,24 +27,26 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Email:</strong> {{ user.email }}</p>
-                            <p><strong>Full Name:</strong> {{ user.get_full_name|default:"Not set" }}</p>
+                            <p><strong>Full name:</strong> {{ user.get_full_name|default:"Not set" }}</p>
                             <p><strong>Phone:</strong> {{ user.phone_number|default:"Not set" }}</p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>University ID:</strong> {{ user.university_id|default:"Not set" }}</p>
-                            <p><strong>User Type:</strong> {{ user.get_user_type_display|default:user.user_type }}</p>
-                            <p><strong>Account Status:</strong>
+                            <p>
+                                <strong>Role:</strong>
+                                <span class="badge text-bg-primary">{{ role_label }}</span>
+                                {% if verification_status == "verified" %}
+                                    <span class="badge text-bg-success">Verified</span>
+                                {% elif verification_status == "unverified" %}
+                                    <span class="badge text-bg-warning text-dark">Not verified</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Account type:</strong> {{ user.get_user_type_display|default:user.user_type }}</p>
+                            <p class="mb-0"><strong>Account status:</strong>
                                 {% if user.is_active %}
                                     <span class="badge bg-success">Active</span>
                                 {% else %}
                                     <span class="badge bg-danger">Inactive</span>
-                                {% endif %}
-                            </p>
-                            <p class="mb-0"><strong>Email Verified:</strong>
-                                {% if user.is_email_verified %}
-                                    <span class="badge bg-success">Yes</span>
-                                {% else %}
-                                    <span class="badge bg-warning">No — Please verify</span>
                                 {% endif %}
                             </p>
                         </div>
@@ -53,20 +55,18 @@
             </div>
 
             <div class="card shadow mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Network access</h5>
+                    <a href="{% url 'payments:membership_hub' %}" class="btn btn-sm btn-outline-primary">
+                        Membership
+                    </a>
                 </div>
                 <div class="card-body">
-                    <p class="mb-3"><strong>Role:</strong> <code>{{ role }}</code></p>
-
                     {% if has_active_membership %}
                         <div class="alert alert-success mb-0">
                             <strong>{{ membership_summary.plan.name }}</strong><br>
                             Expires: {{ membership_summary.end_date|date:"d M Y" }}
                             ({{ membership_summary.remaining_days }} days left)
-                            {% if quota_status and quota_status.available_gb %}
-                            <br><span class="small">Plan data: {{ quota_status.available_gb }} GB</span>
-                            {% endif %}
                         </div>
                     {% elif has_valid_grant and grant_seconds_remaining > 0 %}
                         <div class="alert alert-info mb-0">
@@ -76,11 +76,11 @@
                     {% else %}
                         <div class="alert alert-warning mb-0">
                             No active membership or free access window.
-                            {% if not user.is_email_verified %}
+                            {% if verification_status == "unverified" %}
                             Verify your email for longer benefits.
                             {% else %}
-                            Daily free may apply on next connection, or
-                            <a href="{% url 'accounts:guest_access' %}">watch an ad</a> / subscribe.
+                            <a href="{% url 'payments:membership_hub' %}">View plans</a>
+                            or <a href="{% url 'accounts:guest_access' %}">watch an ad</a>.
                             {% endif %}
                         </div>
                     {% endif %}
@@ -89,8 +89,8 @@
 
             <div class="card shadow">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Your Devices ({{ devices|length }})</h5>
-                    <a href="{% url 'accounts:register_device' %}" class="btn btn-sm btn-primary">+ Add Device</a>
+                    <h5 class="mb-0">Your devices ({{ devices|length }})</h5>
+                    <a href="{% url 'accounts:register_device' %}" class="btn btn-sm btn-primary">+ Add device</a>
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">

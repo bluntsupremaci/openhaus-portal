@@ -25,23 +25,54 @@ class AccessPolicyService:
 
     @staticmethod
     def is_university_member(user: CustomUser) -> bool:
-        return user.user_type in ("student", "staff")
+        """Campus roles from signup dropdown (student or staff)."""
+        return (getattr(user, "user_type", None) or "").strip().lower() in (
+            "student",
+            "staff",
+        )
 
     @staticmethod
     def resolve_role(user: CustomUser | None) -> str:
+        """
+        Exactly one of: student | staff | guest | member
+
+        - member: active membership (trial or paid) wins for display
+        - otherwise: signup user_type (student / staff / guest)
+        - inactive accounts still expose user_type-based role for UI;
+          use user.is_active for a separate blocked state if needed
+        """
         if user is None:
             return "guest"
-        if not user.is_active:
-            return "blocked"
-        if not user.is_email_verified and user.user_type != "guest":
-            return "unverified"
+
         if MembershipService.has_active_membership(user):
             return "member"
-        if AccessPolicyService.is_university_member(user):
-            return "verified_student"
-        if user.user_type == "guest" and user.email.endswith("@temp.openhaus.local"):
-            return "guest"
-        return "verified_non_student"
+
+        ut = (getattr(user, "user_type", None) or "guest").strip().lower()
+        if ut == "student":
+            return "student"
+        if ut == "staff":
+            return "staff"
+        return "guest"
+
+    @staticmethod
+    def resolve_verification_status(user: CustomUser | None) -> str:
+        """
+        verified | unverified | n/a
+
+        Guests never use email verification (always n/a).
+        Student/staff (including when role is member) use is_email_verified.
+        """
+        if user is None:
+            return "n/a"
+
+        ut = (getattr(user, "user_type", None) or "guest").strip().lower()
+        if ut == "guest":
+            return "n/a"
+
+        if ut in ("student", "staff"):
+            return "verified" if user.is_email_verified else "unverified"
+
+        return "n/a"
 
     @staticmethod
     def _local_today(policy: AccessPolicySettings):
@@ -60,11 +91,15 @@ class AccessPolicyService:
 
     @staticmethod
     def has_valid_time_grant(user: CustomUser) -> bool:
-        return any(g.is_currently_valid for g in AccessPolicyService.get_valid_grants(user))
+        return any(
+            g.is_currently_valid for g in AccessPolicyService.get_valid_grants(user)
+        )
 
     @staticmethod
     def total_remaining_seconds(user: CustomUser) -> int:
-        return sum(g.remaining_seconds for g in AccessPolicyService.get_valid_grants(user))
+        return sum(
+            g.remaining_seconds for g in AccessPolicyService.get_valid_grants(user)
+        )
 
     @staticmethod
     def _create_grant(
@@ -98,7 +133,9 @@ class AccessPolicyService:
         return grant
 
     @staticmethod
-    def grant_signup_temp(user: CustomUser, *, force_start: bool = False) -> AccessGrant | None:
+    def grant_signup_temp(
+        user: CustomUser, *, force_start: bool = False
+    ) -> AccessGrant | None:
         policy = AccessPolicyService.settings()
         if not policy.signup_temp_enabled:
             return None
@@ -112,7 +149,9 @@ class AccessPolicyService:
         if policy.signup_timer_starts_on_first_fas and not force_start:
             user.signup_temp_access_granted = True
             user.signup_temp_pending = True
-            user.save(update_fields=["signup_temp_access_granted", "signup_temp_pending"])
+            user.save(
+                update_fields=["signup_temp_access_granted", "signup_temp_pending"]
+            )
             return None
 
         now = timezone.now()
@@ -142,8 +181,8 @@ class AccessPolicyService:
 
         policy = AccessPolicyService.settings()
 
-        # 1-month trial only for @bazeuniversity.edu.ng (etc.), any campus role
-        if AccessPolicyService.email_is_institution_domain(user.email or ""):
+        # Trial only for real university emails (not just UI "Student")
+        if AccessPolicyService.email_is_student_domain(user):
             if not user.premium_trial_activated:
                 MembershipService.grant_premium_trial(
                     user=user,
@@ -162,7 +201,7 @@ class AccessPolicyService:
                 grant_type=AccessGrantType.VERIFY_BONUS,
                 duration_seconds=duration,
                 expires_at=now + timedelta(seconds=duration),
-                notes=f"Verify bonus {hours}h (non-institution email)",
+                notes=f"Verify bonus {hours}h (non-student domain)",
             )
 
         user.signup_bonus_granted = True

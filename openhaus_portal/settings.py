@@ -30,6 +30,14 @@ else:
         "Put it in .env or export it in the shell."
     )
 
+# Paystack Setup
+PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY", "")
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
+
+# Plan price is in NGN major units (e.g. 2000.00). Paystack wants kobo.
+def paystack_amount_kobo(amount_naira) -> int:
+    return int(round(float(amount_naira) * 100))
+
 # ---------------------------------------------------------------------------
 # Hosts / CSRF
 # Lab: 127.0.0.1 + localhost is enough for pure local work.
@@ -69,6 +77,7 @@ INSTALLED_APPS = [
     "api",
     "openhaus_portal",
     "access_policy",
+    "payments",
 ]
 
 MIDDLEWARE = [
@@ -122,12 +131,26 @@ TEMPLATES = [
     },
 ]
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_db_engine = os.getenv("DJANGO_DB_ENGINE", "django.db.backends.sqlite3")
+
+if _db_engine == "django.db.backends.postgresql":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DJANGO_DB_NAME", "openhaus_portal"),
+            "USER": os.getenv("DJANGO_DB_USER", "openhaus"),
+            "PASSWORD": os.getenv("DJANGO_DB_PASSWORD", ""),
+            "HOST": os.getenv("DJANGO_DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DJANGO_DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_USER_MODEL = "accounts.CustomUser"
 

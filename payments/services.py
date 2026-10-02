@@ -89,6 +89,10 @@ class PaymentService:
     @staticmethod
     @transaction.atomic
     def fulfill_by_reference(reference: str) -> Payment:
+        """
+        Verify with Paystack and activate/renew/replace membership.
+        Idempotent: safe to call twice for the same reference.
+        """
         try:
             payment = (
                 Payment.objects.select_for_update()
@@ -110,13 +114,17 @@ class PaymentService:
 
         if (data.get("status") or "").lower() != "success":
             payment.status = PaymentStatus.FAILED
-            payment.save(update_fields=["status", "raw_verify_response", "updated_at"])
+            payment.save(
+                update_fields=["status", "raw_verify_response", "updated_at"]
+            )
             raise PaymentServiceError("Payment was not successful.")
 
         paid_kobo = int(data.get("amount") or 0)
         if paid_kobo != payment.amount_kobo:
             payment.status = PaymentStatus.FAILED
-            payment.save(update_fields=["status", "raw_verify_response", "updated_at"])
+            payment.save(
+                update_fields=["status", "raw_verify_response", "updated_at"]
+            )
             raise PaymentServiceError("Paid amount does not match plan price.")
 
         user = payment.user
@@ -146,16 +154,16 @@ class PaymentService:
         )
         return payment
 
-
     @staticmethod
     def _apply_purchased_plan(*, user, plan):
         """
         No active  → create + activate purchased plan
         Same plan  → extend end_date by plan.duration_days
-        Other plan → end current now, activate new from today
+        Other plan → end current (valid end_date), activate new from today
         """
 
         active = MembershipService.get_active_membership(user)
+        now = timezone.now()
 
         if active is None:
             m = MembershipService.create_membership(user=user, plan=plan)
@@ -164,11 +172,14 @@ class PaymentService:
         # Same plan → extend
         if active.plan_id == plan.id:
             days = int(plan.duration_days or 0)
-            base = active.end_date or timezone.now()
-            if base < timezone.now():
-                base = timezone.now()
+            base = active.end_date or now
+            if base < now:
+                base = now
             active.end_date = base + timedelta(days=days)
-            active.save(update_fields=["end_date", "updated_at"] if hasattr(active, "updated_at") else ["end_date"])
+            fields = ["end_date"]
+            if hasattr(active, "updated_at"):
+                fields.append("updated_at")
+            active.save(update_fields=fields)
             logger.log_event(
                 "MEMBERSHIP_EXTENDED",
                 "Same plan renewed",
@@ -178,10 +189,18 @@ class PaymentService:
             )
             return active
 
-        # Different plan → replace
-        active.status = MembershipStatus.EXPIRED  # or CANCELLED if you have it
-        active.end_date = timezone.now()
-        active.save(update_fields=["status", "end_date"])
+        # Different plan → expire current, then activate new
+        start = active.start_date or now
+        end = now
+        if end <= start:
+            end = start + timedelta(seconds=1)
+
+        active.status = MembershipStatus.EXPIRED
+        active.end_date = end
+        fields = ["status", "end_date"]
+        if hasattr(active, "updated_at"):
+            fields.append("updated_at")
+        active.save(update_fields=fields)
 
         m = MembershipService.create_membership(user=user, plan=plan)
         m = MembershipService.activate_membership(m)
@@ -189,7 +208,7 @@ class PaymentService:
             "MEMBERSHIP_REPLACED",
             "Switched plan after purchase",
             user=user.email,
-            old_plan=str(active.plan_id),
+            old_plan=str(getattr(active.plan, "name", active.plan_id)),
             new_plan=plan.name,
         )
         return m

@@ -1,0 +1,11 @@
+asgiref==3.12.1
+Django==6.1.1
+django-cors-headers==4.9.0
+django-phonenumber-field==8.5.0
+django-stubs==6.1.1
+django-stubs-ext==6.1.1
+phonenumbers==9.0.40
+python-dotenv==1.2.4
+sqlparse==0.6.0
+types-PyYAML==6.0.12.20260906
+typing_extensions==4.16.0

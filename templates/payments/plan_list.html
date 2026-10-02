@@ -2,7 +2,7 @@
 {% block title %}Membership plans - OpenHaus{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2 class="mb-0">Membership plans</h2>
     <a href="{% url 'payments:membership_hub' %}" class="btn btn-outline-secondary btn-sm">
       My membership
@@ -26,7 +26,7 @@
     </div>
     {% empty %}
     <div class="col-12">
-      <div class="alert alert-info">No plans available yet. Add plans in Admin.</div>
+      <div class="alert alert-info">No paid plans available yet. Add plans with price &gt; 0 in Admin.</div>
     </div>
     {% endfor %}
   </div>

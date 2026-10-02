@@ -9,8 +9,7 @@
       <p class="text-muted">{{ plan.description|default:"" }}</p>
       <p class="fs-4 fw-bold">{{ plan.currency }} {{ plan.price }}</p>
       <p class="small text-muted mb-4">
-        {{ plan.duration_days }} days
-        {% if plan.included_quota_gb %} · {{ plan.included_quota_gb }} GB{% endif %}
+        {{ plan.duration_days }} days · up to {{ plan.max_devices }} devices
       </p>
       <form method="post">
         {% csrf_token %}
@@ -18,7 +17,9 @@
           Pay with Paystack
         </button>
       </form>
-      <a href="{% url 'payments:plan_list' %}" class="btn btn-link w-100">Back to plans</a>
+      <a href="{% url 'payments:membership_hub' %}" class="btn btn-link w-100">
+        Back to membership
+      </a>
     </div>
   </div>
 </div>

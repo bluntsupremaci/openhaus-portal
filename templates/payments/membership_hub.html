@@ -7,7 +7,12 @@
   {% if has_active_membership and active_membership %}
   <div class="card shadow border-0 mb-4">
     <div class="card-body">
-      <h4 class="mb-1">{{ active_membership.plan.name }}</h4>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h4 class="mb-0">{{ active_membership.plan.name }}</h4>
+        {% if is_trial %}
+          <span class="badge text-bg-info">Complimentary trial</span>
+        {% endif %}
+      </div>
       <p class="text-success mb-2">
         Active · {{ membership_summary.remaining_days }} days left
       </p>
@@ -17,10 +22,17 @@
         <li>Devices allowed: {{ active_membership.plan.max_devices }}</li>
         <li>Plan length: {{ active_membership.plan.duration_days }} days</li>
       </ul>
-      <a href="{% url 'payments:checkout' active_membership.plan.id %}"
-         class="btn btn-outline-primary btn-sm mt-3">
-        Renew this plan
-      </a>
+      {% if is_trial %}
+        <p class="small text-muted mt-3 mb-0">
+          Trial is complimentary and cannot be paid for or renewed.
+          Choose a paid plan below when you want a full subscription.
+        </p>
+      {% else %}
+        <a href="{% url 'payments:checkout' active_membership.plan.id %}"
+           class="btn btn-outline-primary btn-sm mt-3">
+          Renew this plan
+        </a>
+      {% endif %}
     </div>
   </div>
   {% else %}
@@ -53,7 +65,7 @@
     </div>
     {% empty %}
     <div class="col-12">
-      <p class="text-muted">No plans available. Add plans in Admin.</p>
+      <p class="text-muted">No paid plans available. Add plans with price &gt; 0 in Admin.</p>
     </div>
     {% endfor %}
   </div>

@@ -7,6 +7,9 @@ app_name = "accounts"
 
 urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("access/", views.access_details, name="access_details"),
+    path("session/", views.session_details, name="session_details"),
+    path("session/status/", views.session_status_api, name="session_status_api"),
     path("profile/", views.profile, name="profile"),
     path("profile/edit/", views.edit_profile, name="edit_profile"),
     path("register-device/", views.register_device, name="register_device"),
@@ -19,7 +22,6 @@ urlpatterns = [
         views.resend_verification,
         name="resend_verification",
     ),
-    # Password Reset URLs
     path(
         "password-reset/",
         auth_views.PasswordResetView.as_view(

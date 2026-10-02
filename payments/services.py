@@ -189,7 +189,7 @@ class PaymentService:
             )
             return active
 
-        # Different plan → expire current, then activate new
+        # Different plan → end current safely, then activate new
         start = active.start_date or now
         end = now
         if end <= start:

@@ -28,19 +28,22 @@
     </div>
 
     <div class="row g-4">
+        {# Free access #}
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
                 <div class="card-body text-center p-4">
                     <h5 class="text-primary mb-3">⏱️ Free access window</h5>
                     {% if has_active_membership %}
-                        <p class="text-muted mb-0">Covered by your membership (see next card).</p>
+                        <p class="text-muted mb-3">Covered by your membership</p>
+                        <a href="{% url 'accounts:access_details' %}" class="btn btn-sm btn-outline-primary">Details</a>
                     {% elif has_valid_grant and grant_seconds_remaining > 0 %}
                         <h1 class="display-6 fw-bold text-success mb-1" id="grant-countdown"
                             data-seconds="{{ grant_seconds_remaining }}">—</h1>
-                        <p class="text-muted mb-0">remaining</p>
+                        <p class="text-muted mb-3">remaining</p>
+                        <a href="{% url 'accounts:access_details' %}" class="btn btn-sm btn-outline-primary">Details</a>
                     {% else %}
                         <h1 class="display-5 fw-bold text-secondary">0</h1>
-                        <p class="text-muted">No active free window</p>
+                        <p class="text-muted mb-3">No active free window</p>
                         {% if verification_status == "unverified" %}
                         <p class="small text-muted">Verify email for longer benefits.</p>
                         {% elif role == "guest" %}
@@ -48,45 +51,53 @@
                         {% else %}
                         <p class="small text-muted">Daily free may apply on next connection, or watch an ad / subscribe.</p>
                         {% endif %}
+                        <a href="{% url 'accounts:guest_access' %}" class="btn btn-sm btn-outline-primary">Get free time</a>
                     {% endif %}
                 </div>
             </div>
         </div>
 
+        {# Membership #}
         <div class="col-lg-4 col-md-6">
-            <a href="{% url 'payments:membership_hub' %}" class="text-decoration-none text-reset d-block h-100">
-                <div class="card h-100 shadow border-0">
-                    <div class="card-body p-4">
-                        <h5 class="text-warning mb-3">⭐ Membership</h5>
-                        {% if has_active_membership %}
-                            <h4 class="fw-bold">{{ membership_summary.plan.name }}</h4>
-                            <p class="text-success mb-2">
-                                Active · {{ membership_summary.remaining_days }} days left
-                            </p>
-                            <span class="btn btn-sm btn-outline-primary">Manage / renew</span>
-                        {% else %}
-                            <p class="text-muted mb-2">No active membership</p>
-                            <span class="btn btn-sm btn-primary">View plans</span>
-                        {% endif %}
-                    </div>
+            <div class="card h-100 shadow border-0">
+                <div class="card-body p-4">
+                    <h5 class="text-warning mb-3">⭐ Membership</h5>
+                    {% if has_active_membership %}
+                        <h4 class="fw-bold">{{ membership_summary.plan.name }}</h4>
+                        <p class="text-success mb-3">
+                            Active · {{ membership_summary.remaining_days }} days left
+                        </p>
+                    {% else %}
+                        <p class="text-muted mb-3">No active membership</p>
+                    {% endif %}
+                    <a href="{% url 'payments:membership_hub' %}" class="btn btn-sm btn-outline-primary">
+                        Manage | Buy plan
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
 
+        {# Session #}
         <div class="col-lg-4 col-md-6">
             <div class="card h-100 shadow border-0">
                 <div class="card-body p-4">
                     <h5 class="text-info mb-3">🔗 Current session</h5>
                     {% if active_session %}
                         <p class="text-success fw-bold mb-1">Connected</p>
-                        <small class="text-muted">Started {{ active_session.started_at|timesince }} ago</small>
+                        <small class="text-muted d-block mb-3">
+                            Started {{ active_session.started_at|timesince }} ago
+                        </small>
                     {% else %}
-                        <p class="text-muted mb-0">No active session</p>
+                        <p class="text-muted mb-3">No active session</p>
                     {% endif %}
+                    <a href="{% url 'accounts:session_details' %}" class="btn btn-sm btn-outline-primary">
+                        Session details
+                    </a>
                 </div>
             </div>
         </div>
 
+        {# Devices #}
         <div class="col-12">
             <div class="card shadow border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -126,7 +137,10 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted text-center py-4 mb-0">No devices registered yet.</p>
+                    <p class="text-muted text-center py-4 mb-0">
+                        No devices registered yet.
+                        <a href="{% url 'accounts:register_device' %}">Register a device</a>
+                    </p>
                     {% endif %}
                 </div>
             </div>

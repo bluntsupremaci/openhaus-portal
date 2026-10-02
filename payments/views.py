@@ -10,13 +10,22 @@ from memberships.services.memberships import MembershipService
 from payments.services import PaymentService, PaymentServiceError
 
 
+def _shop_plans():
+    """Paid, active plans only (exclude trial / free grants)."""
+    return (
+        MembershipPlan.objects.filter(is_active=True, price__gt=0)
+        .order_by("price", "duration_days")
+    )
+
+
 @login_required
 @require_GET
 def plan_list(request: HttpRequest) -> HttpResponse:
-    plans = MembershipPlan.objects.filter(is_active=True).order_by(
-        "price", "duration_days"
+    return render(
+        request,
+        "payments/plan_list.html",
+        {"plans": _shop_plans()},
     )
-    return render(request, "payments/plan_list.html", {"plans": plans})
 
 
 @login_required
@@ -25,8 +34,10 @@ def membership_hub(request: HttpRequest) -> HttpResponse:
     user = request.user
     summary = MembershipService.get_membership_summary(user)
     active = MembershipService.get_active_membership(user)
-    plans = MembershipPlan.objects.filter(is_active=True).order_by(
-        "price", "duration_days"
+    is_trial = bool(
+        active
+        and active.plan
+        and (active.plan.price is None or active.plan.price <= 0)
     )
     return render(
         request,
@@ -34,8 +45,9 @@ def membership_hub(request: HttpRequest) -> HttpResponse:
         {
             "membership_summary": summary,
             "active_membership": active,
-            "plans": plans,
+            "plans": _shop_plans(),
             "has_active_membership": bool(summary.get("has_membership")),
+            "is_trial": is_trial,
         },
     )
 
@@ -44,6 +56,10 @@ def membership_hub(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 def checkout(request: HttpRequest, plan_id) -> HttpResponse:
     plan = get_object_or_404(MembershipPlan, pk=plan_id, is_active=True)
+
+    if plan.price is None or plan.price <= 0:
+        messages.error(request, "This plan cannot be purchased.")
+        return redirect("payments:membership_hub")
 
     if request.method == "GET":
         return render(request, "payments/checkout.html", {"plan": plan})

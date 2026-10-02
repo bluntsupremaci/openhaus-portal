@@ -114,7 +114,12 @@ class SessionService:
                 )
             session.is_active = False
             session.save(
-                update_fields=["ended_at", "duration_seconds", "is_active", "updated_at"]
+                update_fields=[
+                    "ended_at",
+                    "duration_seconds",
+                    "is_active",
+                    "updated_at",
+                ]
             )
             logger.log_session_ended(user=session.user, device=session.device)
             return session
@@ -133,3 +138,12 @@ class SessionService:
         if ip_address:
             queryset = queryset.filter(ip_address=ip_address)
         return queryset.select_related("user", "device").first()
+
+    @staticmethod
+    def get_user_sessions(user: CustomUser, limit: int = 20) -> list[WiFiSession]:
+        """Recent sessions for the session details UI (active + history)."""
+        return list(
+            WiFiSession.objects.filter(user=user)
+            .select_related("user", "device")
+            .order_by("-started_at")[:limit]
+        )

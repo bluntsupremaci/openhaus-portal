@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block title %}Session - OpenHaus{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h2 class="mb-0">Session</h2>
+      <p class="small text-muted mb-0">
+        Updates every <span id="poll-interval-label">15</span>s
+        · last refresh <span id="last-refresh">just now</span>
+      </p>
+    </div>
+    <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary btn-sm">Back to dashboard</a>
+  </div>
+
+  <div class="card shadow border-0 mb-4">
+    <div class="card-body" id="current-session-panel">
+      <h5 class="card-title">Current session</h5>
+      <div id="current-session-body">
+        {% if active_session %}
+          <p class="mb-3" id="cs-badges">
+            {% if active_session.is_active %}
+              <span class="badge text-bg-success">Connected</span>
+            {% else %}
+              <span class="badge text-bg-secondary">Ended</span>
+            {% endif %}
+            {% if active_session.auth_method %}
+              <span class="badge text-bg-light text-dark border">{{ active_session.auth_method }}</span>
+            {% endif %}
+          </p>
+          <dl class="row small mb-0" id="cs-dl">
+            {% if active_session.started_at %}
+            <dt class="col-sm-4">Started</dt>
+            <dd class="col-sm-8" id="cs-started">
+              {{ active_session.started_at|date:"d M Y H:i:s" }}
+              ({{ active_session.started_at|timesince }} ago)
+            </dd>
+            {% endif %}
+            <dt class="col-sm-4">Duration</dt>
+            <dd class="col-sm-8" id="cs-duration">{{ active_session.duration_display }}</dd>
+            {% if active_session.ended_at %}
+            <dt class="col-sm-4">Ended</dt>
+            <dd class="col-sm-8" id="cs-ended">{{ active_session.ended_at|date:"d M Y H:i:s" }}</dd>
+            {% endif %}
+            {% if active_session.hostname or active_session.mac_address %}
+            <dt class="col-sm-4">Device</dt>
+            <dd class="col-sm-8" id="cs-device">
+              {{ active_session.hostname|default:"—" }}
+              {% if active_session.mac_address %} · <code>{{ active_session.mac_address }}</code>{% endif %}
+            </dd>
+            {% endif %}
+            {% if active_session.ip_address %}
+            <dt class="col-sm-4">IP</dt>
+            <dd class="col-sm-8" id="cs-ip"><code>{{ active_session.ip_address }}</code></dd>
+            {% endif %}
+            {% if active_session.bytes_used_display %}
+            <dt class="col-sm-4">Data (session)</dt>
+            <dd class="col-sm-8" id="cs-data">{{ active_session.bytes_used_display }} used</dd>
+            {% elif active_session.bytes_up_display or active_session.bytes_down_display %}
+            <dt class="col-sm-4">Data (session)</dt>
+            <dd class="col-sm-8" id="cs-data">
+              ↑ {{ active_session.bytes_up_display|default:"—" }}
+              · ↓ {{ active_session.bytes_down_display|default:"—" }}
+            </dd>
+            {% else %}
+            <dt class="col-sm-4 d-none" id="cs-data-dt">Data (session)</dt>
+            <dd class="col-sm-8 d-none" id="cs-data"></dd>
+            {% endif %}
+            {% if active_session.auth_method %}
+            <dt class="col-sm-4">Auth method</dt>
+            <dd class="col-sm-8" id="cs-auth">{{ active_session.auth_method }}</dd>
+            {% endif %}
+          </dl>
+        {% else %}
+          <p class="text-muted mb-0" id="cs-empty">
+            No active session. Open the portal from campus Wi‑Fi / the captive portal
+            so openNDS can attach a session to your account.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow border-0">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Recent sessions</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>Duration</th>
+              <th>Device / MAC</th>
+              <th>IP</th>
+              <th>Data</th>
+              <th>Auth</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recent-sessions-body">
+            {% for s in recent_sessions %}
+            <tr>
+              <td class="small">{% if s.started_at %}{{ s.started_at|date:"d M Y H:i" }}{% else %}—{% endif %}</td>
+              <td class="small">{{ s.duration_display }}</td>
+              <td class="small">
+                {{ s.hostname|default:"" }}
+                {% if s.mac_address %}<code>{{ s.mac_address }}</code>{% elif not s.hostname %}—{% endif %}
+              </td>
+              <td class="small">{% if s.ip_address %}<code>{{ s.ip_address }}</code>{% else %}—{% endif %}</td>
+              <td class="small">
+                {% if s.bytes_used_display %}{{ s.bytes_used_display }} used
+                {% elif s.bytes_up_display or s.bytes_down_display %}
+                  ↑ {{ s.bytes_up_display|default:"—" }} · ↓ {{ s.bytes_down_display|default:"—" }}
+                {% else %}—{% endif %}
+              </td>
+              <td class="small">{{ s.auth_method|default:"—" }}</td>
+              <td>
+                {% if s.is_active %}
+                  <span class="badge text-bg-success">Active</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Ended</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="recent-empty-row">
+              <td colspan="7" class="text-muted text-center py-4">No session history yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var POLL_MS = 15000; // 15 seconds (use 10000–30000 as you like)
+  var statusUrl = "{% url 'accounts:session_status_api' %}";
+  var lastEl = document.getElementById("last-refresh");
+  var bodyEl = document.getElementById("current-session-body");
+  var recentBody = document.getElementById("recent-sessions-body");
+
+  function esc(s) {
+    if (s == null || s === "") return "";
+    var d = document.createElement("div");
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function formatStarted(iso) {
+    if (!iso) return "—";
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function dataCell(s) {
+    if (s.bytes_used_display) return esc(s.bytes_used_display) + " used";
+    if (s.bytes_up_display || s.bytes_down_display) {
+      return "↑ " + esc(s.bytes_up_display || "—") + " · ↓ " + esc(s.bytes_down_display || "—");
+    }
+    return "—";
+  }
+
+  function renderCurrent(s) {
+    if (!s) {
+      bodyEl.innerHTML =
+        '<p class="text-muted mb-0" id="cs-empty">' +
+        "No active session. Open the portal from campus Wi‑Fi / the captive portal " +
+        "so openNDS can attach a session to your account.</p>";
+      return;
+    }
+    var badges =
+      (s.is_active
+        ? '<span class="badge text-bg-success">Connected</span> '
+        : '<span class="badge text-bg-secondary">Ended</span> ') +
+      (s.auth_method
+        ? '<span class="badge text-bg-light text-dark border">' + esc(s.auth_method) + "</span>"
+        : "");
+
+    var rows = "";
+    if (s.started_at) {
+      rows +=
+        '<dt class="col-sm-4">Started</dt><dd class="col-sm-8">' +
+        esc(formatStarted(s.started_at)) +
+        "</dd>";
+    }
+    rows +=
+      '<dt class="col-sm-4">Duration</dt><dd class="col-sm-8">' +
+      esc(s.duration_display || "—") +
+      "</dd>";
+    if (s.ended_at) {
+      rows +=
+        '<dt class="col-sm-4">Ended</dt><dd class="col-sm-8">' +
+        esc(formatStarted(s.ended_at)) +
+        "</dd>";
+    }
+    if (s.hostname || s.mac_address) {
+      rows +=
+        '<dt class="col-sm-4">Device</dt><dd class="col-sm-8">' +
+        esc(s.hostname || "—") +
+        (s.mac_address ? " · <code>" + esc(s.mac_address) + "</code>" : "") +
+        "</dd>";
+    }
+    if (s.ip_address) {
+      rows +=
+        '<dt class="col-sm-4">IP</dt><dd class="col-sm-8"><code>' +
+        esc(s.ip_address) +
+        "</code></dd>";
+    }
+    var dataText = dataCell(s);
+    if (dataText !== "—") {
+      rows +=
+        '<dt class="col-sm-4">Data (session)</dt><dd class="col-sm-8">' +
+        dataText +
+        "</dd>";
+    }
+    if (s.auth_method) {
+      rows +=
+        '<dt class="col-sm-4">Auth method</dt><dd class="col-sm-8">' +
+        esc(s.auth_method) +
+        "</dd>";
+    }
+
+    bodyEl.innerHTML =
+      '<p class="mb-3">' + badges + "</p>" +
+      '<dl class="row small mb-0">' + rows + "</dl>";
+  }
+
+  function renderRecent(list) {
+    if (!recentBody) return;
+    if (!list || !list.length) {
+      recentBody.innerHTML =
+        '<tr><td colspan="7" class="text-muted text-center py-4">No session history yet.</td></tr>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i];
+      var started = s.started_at ? formatStarted(s.started_at) : "—";
+      var device =
+        esc(s.hostname || "") +
+        (s.mac_address
+          ? " <code>" + esc(s.mac_address) + "</code>"
+          : s.hostname
+            ? ""
+            : "—");
+      var status = s.is_active
+        ? '<span class="badge text-bg-success">Active</span>'
+        : '<span class="badge text-bg-secondary">Ended</span>';
+      html +=
+        "<tr>" +
+        '<td class="small">' + esc(started) + "</td>" +
+        '<td class="small">' + esc(s.duration_display || "—") + "</td>" +
+        '<td class="small">' + device + "</td>" +
+        '<td class="small">' +
+        (s.ip_address ? "<code>" + esc(s.ip_address) + "</code>" : "—") +
+        "</td>" +
+        '<td class="small">' + dataCell(s) + "</td>" +
+        '<td class="small">' + esc(s.auth_method || "—") + "</td>" +
+        "<td>" + status + "</td>" +
+        "</tr>";
+    }
+    recentBody.innerHTML = html;
+  }
+
+  function tickRefreshLabel() {
+    if (lastEl) lastEl.textContent = new Date().toLocaleTimeString();
+  }
+
+  function poll() {
+    fetch(statusUrl, {
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("status " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        renderCurrent(data.active_session);
+        renderRecent(data.recent_sessions);
+        tickRefreshLabel();
+      })
+      .catch(function () {
+        if (lastEl) lastEl.textContent = "update failed · retrying";
+      });
+  }
+
+  // First poll after interval; initial HTML is already correct
+  setInterval(poll, POLL_MS);
+  // Optional: first poll after 15s only; or poll once soon:
+  // setTimeout(poll, 2000);
+})();
+</script>
+{% endblock %}

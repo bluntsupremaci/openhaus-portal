@@ -3,16 +3,54 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 1) Load .env FIRST so os.getenv sees DJANGO_* vars
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
+
 # Ensure log directory exists before FileHandler opens
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "uev87@x@xcf2(2870yehdo2^f21m#+gi^4&xi8gr)2*r6s9+*!")
+# 2) DEBUG from env (default True for local lab only)
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
-# Prefer explicit hosts via env in non-debug
-_allowed = os.getenv("DJANGO_ALLOWED_HOSTS", "*")
+# 3) SECRET_KEY — never commit a real key in this file
+_secret = (os.getenv("DJANGO_SECRET_KEY") or "").strip()
+if _secret:
+    SECRET_KEY = _secret
+elif DEBUG:
+    SECRET_KEY = "django-insecure-dev-only-not-for-production"
+else:
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=False. "
+        "Put it in .env or export it in the shell."
+    )
+
+# ---------------------------------------------------------------------------
+# Hosts / CSRF
+# Lab: 127.0.0.1 + localhost is enough for pure local work.
+# Portal/openNDS lab: add your Mac LAN IP in .env.
+# AWS later: set domain only in env (no * in production).
+# ---------------------------------------------------------------------------
+_default_hosts = "127.0.0.1,localhost"
+_allowed = os.getenv("DJANGO_ALLOWED_HOSTS", _default_hosts if DEBUG else "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
+if not DEBUG and not ALLOWED_HOSTS:
+    raise RuntimeError(
+        "DJANGO_ALLOWED_HOSTS must be set when DJANGO_DEBUG=False "
+        "(comma-separated, e.g. portal.example.com,192.168.1.10)."
+    )
+
+_default_csrf = "http://127.0.0.1:8000,http://localhost:8000"
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", _default_csrf).split(",")
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -46,17 +84,27 @@ MIDDLEWARE = [
 ROOT_URLCONF = "openhaus_portal.urls"
 WSGI_APPLICATION = "openhaus_portal.wsgi.application"
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "DJANGO_CSRF_TRUSTED_ORIGINS",
-        "http://127.0.0.1,http://localhost,http://127.0.0.1:8000",
-    ).split(",")
-    if origin.strip()
-]
-
-CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
+
+# ---------------------------------------------------------------------------
+# TLS — independent of DEBUG (Fix #3)
+# Lab HTTP + openNDS:  DJANGO_USE_TLS=False
+# AWS + real HTTPS:    DJANGO_USE_TLS=True
+# ---------------------------------------------------------------------------
+USE_TLS = os.getenv("DJANGO_USE_TLS", "False") == "True"
+
+if USE_TLS:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 TEMPLATES = [
     {
@@ -100,11 +148,6 @@ PHONENUMBER_DEFAULT_REGION = "NG"
 PHONENUMBER_DB_FORMAT = "INTERNATIONAL"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
 
 # Optional CORS (only if package installed)
 try:
@@ -158,13 +201,15 @@ FAS_BASE_URL = os.getenv("FAS_BASE_URL", "http://127.0.0.1:8000")
 FAS_PORTAL_LOGIN_URL = "/accounts/login/"
 FAS_GUEST_URL = "/accounts/guest/"
 
-# openhaus_portal/settings.py
+# Lab default key OK for local; production should set OPENNDS_FAS_KEY in env (Fix #4 next)
 OPENNDS_FAS_KEY = os.getenv(
     "OPENNDS_FAS_KEY",
-    "f901698444084cb1ed54d306c9d61528848357f95461ce3099454b4b06496cdb",
+    "f901698444084cb1ed54d306c9d61528848357f95461ce3099454b4b06496cdb" if DEBUG else "",
 )
+if not DEBUG and not OPENNDS_FAS_KEY:
+    raise RuntimeError("OPENNDS_FAS_KEY must be set when DJANGO_DEBUG=False.")
 
-# Explicit only. Do NOT tie to DEBUG — that grants verify bonus (trial/24h) on every signup.
+# Explicit only. Do NOT tie to DEBUG — that grants verify bonus on every signup.
 AUTH_AUTO_VERIFY_EMAIL = os.getenv("AUTH_AUTO_VERIFY_EMAIL", "False") == "True"
 
 # Email (dev: print to console; prod: set SMTP via env)
@@ -181,4 +226,6 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
     EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OpenHaus <noreply@openhaus.local>")
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", "OpenHaus <noreply@openhaus.local>"
+)
